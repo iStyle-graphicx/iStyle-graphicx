@@ -6,12 +6,27 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  // If Supabase environment variables are not available, skip auth processing
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("[v0] Supabase environment variables not found, skipping auth middleware")
+    return supabaseResponse
+  }
+
+  // Validate URL format
+  try {
+    new URL(supabaseUrl)
+  } catch (error) {
+    console.error("[v0] Invalid Supabase URL format:", supabaseUrl)
+    return supabaseResponse
+  }
+
+  try {
+    // With Fluid compute, don't put this client in a global environment
+    // variable. Always create a new one on each request.
+    const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
       cookies: {
         getAll() {
           return request.cookies.getAll()
@@ -24,14 +39,12 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
         },
       },
-    },
-  )
+    })
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+    // Do not run code between createServerClient and
+    // supabase.auth.getUser(). A simple mistake could make it very hard to debug
+    // issues with users being randomly logged out.
 
-  try {
     // IMPORTANT: If you remove getUser() and you use server-side rendering
     // with the Supabase client, your users may be randomly logged out.
     const {
