@@ -1,17 +1,23 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Phone, Mail, MapPin, Clock } from "lucide-react"
+import { Phone, Mail, MapPin, Clock, Share2, FileText, Shield, Copyright } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useSettings } from "@/lib/contexts/settings-context"
 
-export function HelpSupportSection() {
+interface HelpSupportSectionProps {
+  onNavigate?: (section: string) => void
+}
+
+export function HelpSupportSection({ onNavigate }: HelpSupportSectionProps) {
+  const { toast } = useToast()
+  const { shareApp } = useSettings()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -19,7 +25,6 @@ export function HelpSupportSection() {
     subject: "",
     message: "",
   })
-  const { toast } = useToast()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -78,10 +83,86 @@ export function HelpSupportSection() {
     },
   ]
 
+  const legalDocuments = [
+    {
+      id: "termsSection",
+      title: "Terms of Service",
+      description: "Read our terms and conditions for using VanGo services",
+      icon: FileText,
+    },
+    {
+      id: "privacySection",
+      title: "Privacy Policy",
+      description: "Learn how we protect and handle your personal information",
+      icon: Shield,
+    },
+    {
+      id: "copyrightSection",
+      title: "Copyright Policy",
+      description: "VanGo app intellectual property and usage rights",
+      icon: Copyright,
+    },
+  ]
+
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
       <h2 className="text-2xl font-bold mb-6 text-white">Help & Support</h2>
 
+      {/* Share App Card */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
+            <Share2 className="w-5 h-5" />
+            Share VanGo
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-300 mb-4">
+            Love using VanGo? Share our app with friends and family to help them discover reliable delivery services.
+          </p>
+          <Button onClick={shareApp} className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+            <Share2 className="w-4 h-4 mr-2" />
+            Share VanGo App
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Legal Documents Card */}
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+        <CardHeader>
+          <CardTitle className="text-xl font-semibold text-white">Legal Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-gray-300 mb-4">
+            Important legal information about using VanGo services and your rights as a user.
+          </p>
+          <div className="space-y-3">
+            {legalDocuments.map((doc) => {
+              const Icon = doc.icon
+              return (
+                <div
+                  key={doc.id}
+                  className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700/70 transition-colors"
+                  onClick={() => onNavigate?.(doc.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Icon className="text-white w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white">{doc.title}</h4>
+                      <p className="text-sm text-gray-400">{doc.description}</p>
+                    </div>
+                  </div>
+                  <div className="text-orange-500">→</div>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Contact Us Card */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white">Contact Us</CardTitle>
@@ -111,6 +192,7 @@ export function HelpSupportSection() {
         </CardContent>
       </Card>
 
+      {/* Send Us a Message Card */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white">Send Us a Message</CardTitle>
@@ -198,6 +280,7 @@ export function HelpSupportSection() {
         </CardContent>
       </Card>
 
+      {/* Support Areas Card */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white">Support Areas</CardTitle>

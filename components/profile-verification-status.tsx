@@ -38,11 +38,31 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
   const supabase = createClient()
 
   useEffect(() => {
-    fetchVerificationStatus()
+    if (userId && isValidUUID(userId)) {
+      fetchVerificationStatus()
+    } else {
+      console.log("[v0] Invalid or missing userId:", userId)
+    }
   }, [userId])
 
+  const isValidUUID = (uuid: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    return uuidRegex.test(uuid)
+  }
+
   const fetchVerificationStatus = async () => {
+    if (!userId || !isValidUUID(userId)) {
+      console.error("Error fetching verification status: Invalid userId provided")
+      toast({
+        title: "Error",
+        description: "Invalid user ID. Please try logging in again.",
+        variant: "destructive",
+      })
+      return
+    }
+
     try {
+      console.log("[v0] Fetching verification status for userId:", userId)
       const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).single()
 
       if (data) {
@@ -70,6 +90,11 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
   }
 
   const createDefaultVerificationRecord = async () => {
+    if (!userId || !isValidUUID(userId)) {
+      console.error("Cannot create verification record: Invalid userId")
+      return
+    }
+
     try {
       const { data, error } = await supabase
         .from("user_verifications")

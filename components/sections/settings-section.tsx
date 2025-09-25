@@ -9,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { User, CreditCard, Bell, Globe, Palette, Trash2, Info } from "lucide-react"
+import { User, CreditCard, Bell, Globe, Palette, Trash2, Info, Share2 } from "lucide-react"
 import { ChangePasswordModal, AddPaymentMethodModal, BillingHistoryModal } from "@/components/settings-modals"
+import { useSettings } from "@/lib/contexts/settings-context"
+import { useTranslation } from "@/lib/i18n/translations"
 
 interface SettingsSectionProps {
   user: any
@@ -18,6 +20,8 @@ interface SettingsSectionProps {
 
 export function SettingsSection({ user }: SettingsSectionProps) {
   const { toast } = useToast()
+  const { language, theme, setLanguage, setTheme, shareApp, isLoading } = useSettings()
+  const { t } = useTranslation(language)
   const [profile, setProfile] = useState<any>(null)
   const [paymentMethods, setPaymentMethods] = useState<any[]>([])
   const [notifications, setNotifications] = useState({
@@ -26,7 +30,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
     sms: false,
     marketing: false,
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [isProfileLoading, setIsProfileLoading] = useState(false)
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false)
   const [showBillingHistoryModal, setShowBillingHistoryModal] = useState(false)
@@ -75,7 +79,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
   }
 
   const updateProfile = async (field: string, value: string) => {
-    setIsLoading(true)
+    setIsProfileLoading(true)
     const { error } = await supabase
       .from("profiles")
       .update({ [field]: value, updated_at: new Date().toISOString() })
@@ -83,18 +87,18 @@ export function SettingsSection({ user }: SettingsSectionProps) {
 
     if (error) {
       toast({
-        title: "Error",
+        title: t("error"),
         description: "Failed to update profile",
         variant: "destructive",
       })
     } else {
       toast({
-        title: "Success",
+        title: t("success"),
         description: "Profile updated successfully",
       })
       fetchProfile()
     }
-    setIsLoading(false)
+    setIsProfileLoading(false)
   }
 
   const updateNotificationPreferences = async (field: string, value: boolean) => {
@@ -106,13 +110,13 @@ export function SettingsSection({ user }: SettingsSectionProps) {
 
     if (error) {
       toast({
-        title: "Error",
+        title: t("error"),
         description: "Failed to update notification preferences",
         variant: "destructive",
       })
     } else {
       toast({
-        title: "Success",
+        title: t("success"),
         description: "Notification preferences updated",
       })
     }
@@ -123,13 +127,13 @@ export function SettingsSection({ user }: SettingsSectionProps) {
 
     if (error) {
       toast({
-        title: "Error",
+        title: t("error"),
         description: "Failed to remove payment method",
         variant: "destructive",
       })
     } else {
       toast({
-        title: "Success",
+        title: t("success"),
         description: "Payment method removed successfully",
       })
       fetchPaymentMethods()
@@ -149,7 +153,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
   if (!user) {
     return (
       <div className="px-4 pt-6 pb-16">
-        <h2 className="text-2xl font-bold mb-6 text-white">Settings</h2>
+        <h2 className="text-2xl font-bold mb-6 text-white">{t("settings")}</h2>
         <p className="text-gray-300">Please log in to access settings.</p>
       </div>
     )
@@ -157,14 +161,14 @@ export function SettingsSection({ user }: SettingsSectionProps) {
 
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
-      <h2 className="text-2xl font-bold mb-6 text-white">Settings</h2>
+      <h2 className="text-2xl font-bold mb-6 text-white">{t("settings")}</h2>
 
       {/* Account Settings */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
             <User className="w-5 h-5" />
-            Account Settings
+            {t("accountSettings")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -228,7 +232,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            Payment Settings
+            {t("paymentSettings")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -285,7 +289,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
             <Bell className="w-5 h-5" />
-            Notification Preferences
+            {t("notificationPreferences")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -354,7 +358,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white flex items-center gap-2">
             <Palette className="w-5 h-5" />
-            App Settings
+            {t("appSettings")}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -362,13 +366,13 @@ export function SettingsSection({ user }: SettingsSectionProps) {
             <div className="flex items-center gap-3">
               <Globe className="w-4 h-4 text-orange-500" />
               <div>
-                <h4 className="font-semibold text-white">Language</h4>
+                <h4 className="font-semibold text-white">{t("language")}</h4>
                 <p className="text-sm text-gray-400">Change app language</p>
               </div>
             </div>
-            <Select>
+            <Select value={language} onValueChange={setLanguage} disabled={isLoading}>
               <SelectTrigger className="w-32 bg-slate-700 border-slate-600 text-white">
-                <SelectValue placeholder="English" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
                 <SelectItem value="en">English</SelectItem>
@@ -383,20 +387,36 @@ export function SettingsSection({ user }: SettingsSectionProps) {
             <div className="flex items-center gap-3">
               <Palette className="w-4 h-4 text-orange-500" />
               <div>
-                <h4 className="font-semibold text-white">Theme</h4>
+                <h4 className="font-semibold text-white">{t("theme")}</h4>
                 <p className="text-sm text-gray-400">Change app appearance</p>
               </div>
             </div>
-            <Select>
+            <Select value={theme} onValueChange={setTheme} disabled={isLoading}>
               <SelectTrigger className="w-32 bg-slate-700 border-slate-600 text-white">
-                <SelectValue placeholder="Dark" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-700 border-slate-600">
                 <SelectItem value="dark">Dark</SelectItem>
                 <SelectItem value="light">Light</SelectItem>
                 <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="orange">Orange</SelectItem>
+                <SelectItem value="blue">Blue</SelectItem>
+                <SelectItem value="green">Green</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex justify-between items-center py-3 border-b border-white/10">
+            <div className="flex items-center gap-3">
+              <Share2 className="w-4 h-4 text-orange-500" />
+              <div>
+                <h4 className="font-semibold text-white">{t("shareApp")}</h4>
+                <p className="text-sm text-gray-400">Share VanGo with friends</p>
+              </div>
+            </div>
+            <Button onClick={shareApp} className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 text-sm">
+              Share
+            </Button>
           </div>
 
           <div className="flex justify-between items-center py-3 border-b border-white/10">
@@ -416,11 +436,14 @@ export function SettingsSection({ user }: SettingsSectionProps) {
             <div className="flex items-center gap-3">
               <Info className="w-4 h-4 text-blue-500" />
               <div>
-                <h4 className="font-semibold text-white">App Version</h4>
+                <h4 className="font-semibold text-white">{t("appVersion")}</h4>
                 <p className="text-sm text-gray-400">Current version information</p>
               </div>
             </div>
-            <span className="text-sm text-gray-400">v2.1.0</span>
+            <div className="text-right">
+              <span className="text-sm text-gray-400">v1.1.0</span>
+              <p className="text-xs text-gray-500">VanGo Delivery (PTY) Ltd. 2025</p>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { SectionLoading } from "@/components/loading-fallback"
 import { Header } from "@/components/header"
 import { SideMenu } from "@/components/side-menu"
 import { BottomNav } from "@/components/bottom-nav"
@@ -16,9 +18,14 @@ import { SettingsSection } from "@/components/sections/settings-section"
 import { HelpSupportSection } from "@/components/sections/help-support-section"
 import { NotificationsSection } from "@/components/sections/notifications-section"
 import { LearnMoreSection } from "@/components/sections/learn-more-section"
+import { TermsSection } from "@/components/sections/terms-section"
+import { PrivacySection } from "@/components/sections/privacy-section"
+import { CopyrightSection } from "@/components/sections/copyright-section"
 import { RequestDeliveryModal } from "@/components/request-delivery-modal"
 import { AuthModal } from "@/components/auth-modal"
 import { NotificationProvider } from "@/hooks/use-notifications"
+import { SettingsProvider } from "@/lib/contexts/settings-context"
+import { PerformanceMonitor } from "@/lib/performance"
 
 interface MainAppProps {
   onLogout: () => void
@@ -31,13 +38,26 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [authType, setAuthType] = useState<"login" | "register">("register")
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const performanceMonitor = PerformanceMonitor.getInstance()
 
   useEffect(() => {
+    performanceMonitor.startTiming("app-initialization")
+
     const userData = localStorage.getItem("vangoUser")
     if (userData) {
-      setCurrentUser(JSON.parse(userData))
+      try {
+        setCurrentUser(JSON.parse(userData))
+      } catch (error) {
+        console.error("Error parsing user data:", error)
+        localStorage.removeItem("vangoUser")
+      }
     }
-  }, [])
+
+    setIsLoading(false)
+    performanceMonitor.endTiming("app-initialization")
+  }, [performanceMonitor])
 
   const handleLogout = () => {
     localStorage.removeItem("vangoUser")
@@ -56,7 +76,11 @@ export function MainApp({ onLogout }: MainAppProps) {
   const handleAuthSuccess = () => {
     const userData = localStorage.getItem("vangoUser")
     if (userData) {
-      setCurrentUser(JSON.parse(userData))
+      try {
+        setCurrentUser(JSON.parse(userData))
+      } catch (error) {
+        console.error("Error parsing user data after auth:", error)
+      }
     }
   }
 
@@ -65,76 +89,176 @@ export function MainApp({ onLogout }: MainAppProps) {
     setShowAuthModal(true)
   }
 
+  const handleSectionChange = (section: string) => {
+    performanceMonitor.startTiming(`section-change-${section}`)
+    setCurrentSection(section)
+    // End timing will be handled by the section component
+  }
+
   const renderCurrentSection = () => {
+    const sectionProps = {
+      user: currentUser,
+      onLogout: handleLogout,
+      onRequestDriver: handleRequestDriver,
+      onRequestDelivery: () => setShowRequestModal(true),
+      onLearnMore: handleLearnMore,
+    }
+
     switch (currentSection) {
       case "homeSection":
-        return <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+        return (
+          <ErrorBoundary>
+            <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+          </ErrorBoundary>
+        )
       case "profileSection":
-        return <ProfileSection user={currentUser} onLogout={handleLogout} />
+        return (
+          <ErrorBoundary>
+            <ProfileSection user={currentUser} onLogout={handleLogout} />
+          </ErrorBoundary>
+        )
       case "trackDeliverySection":
-        return <TrackSection user={currentUser} />
+        return (
+          <ErrorBoundary>
+            <TrackSection user={currentUser} />
+          </ErrorBoundary>
+        )
       case "deliveryHistorySection":
-        return <DeliveryHistorySection />
+        return (
+          <ErrorBoundary>
+            <DeliveryHistorySection />
+          </ErrorBoundary>
+        )
       case "driversPortalSection":
-        return <DriversPortalSection user={currentUser} />
+        return (
+          <ErrorBoundary>
+            <DriversPortalSection user={currentUser} />
+          </ErrorBoundary>
+        )
       case "driversSection":
-        return <DriversSection user={currentUser} onRequestDriver={handleRequestDriver} />
+        return (
+          <ErrorBoundary>
+            <DriversSection user={currentUser} onRequestDriver={handleRequestDriver} />
+          </ErrorBoundary>
+        )
       case "servicesSection":
-        return <ServicesSection />
+        return (
+          <ErrorBoundary>
+            <ServicesSection />
+          </ErrorBoundary>
+        )
       case "deliveryAreasSection":
-        return <DeliveryAreasSection />
+        return (
+          <ErrorBoundary>
+            <DeliveryAreasSection />
+          </ErrorBoundary>
+        )
       case "settingsSection":
-        return <SettingsSection user={currentUser} />
+        return (
+          <ErrorBoundary>
+            <SettingsSection user={currentUser} />
+          </ErrorBoundary>
+        )
       case "helpSupportSection":
-        return <HelpSupportSection />
+        return (
+          <ErrorBoundary>
+            <HelpSupportSection />
+          </ErrorBoundary>
+        )
       case "notificationsSection":
-        return <NotificationsSection user={currentUser} />
+        return (
+          <ErrorBoundary>
+            <NotificationsSection user={currentUser} />
+          </ErrorBoundary>
+        )
       case "learnMoreSection":
-        return <LearnMoreSection />
+        return (
+          <ErrorBoundary>
+            <LearnMoreSection />
+          </ErrorBoundary>
+        )
+      case "termsSection":
+        return (
+          <ErrorBoundary>
+            <TermsSection />
+          </ErrorBoundary>
+        )
+      case "privacySection":
+        return (
+          <ErrorBoundary>
+            <PrivacySection />
+          </ErrorBoundary>
+        )
+      case "copyrightSection":
+        return (
+          <ErrorBoundary>
+            <CopyrightSection />
+          </ErrorBoundary>
+        )
       default:
-        return <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+        return (
+          <ErrorBoundary>
+            <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+          </ErrorBoundary>
+        )
     }
   }
 
+  if (isLoading) {
+    return <SectionLoading message="Initializing VanGo..." />
+  }
+
   return (
-    <NotificationProvider userId={currentUser?.id}>
-      <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
-        <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
+    <SettingsProvider userId={currentUser?.id}>
+      <NotificationProvider userId={currentUser?.id}>
+        <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+          <ErrorBoundary>
+            <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
+          </ErrorBoundary>
 
-        <SideMenu
-          isOpen={isMenuOpen}
-          onClose={() => setIsMenuOpen(false)}
-          currentSection={currentSection}
-          onNavigate={setCurrentSection}
-          user={currentUser}
-          onLogout={handleLogout}
-        />
+          <ErrorBoundary>
+            <SideMenu
+              isOpen={isMenuOpen}
+              onClose={() => setIsMenuOpen(false)}
+              currentSection={currentSection}
+              onNavigate={handleSectionChange}
+              user={currentUser}
+              onLogout={handleLogout}
+            />
+          </ErrorBoundary>
 
-        <main className="pb-20 pt-4">{renderCurrentSection()}</main>
+          <main className="pb-20 pt-4">{renderCurrentSection()}</main>
 
-        <BottomNav
-          currentSection={currentSection}
-          onNavigate={setCurrentSection}
-          onRequestDelivery={() => setShowRequestModal(true)}
-        />
+          <ErrorBoundary>
+            <BottomNav
+              currentSection={currentSection}
+              onNavigate={handleSectionChange}
+              onRequestDelivery={() => setShowRequestModal(true)}
+            />
+          </ErrorBoundary>
 
-        <RequestDeliveryModal
-          isOpen={showRequestModal}
-          onClose={() => setShowRequestModal(false)}
-          onShowAuth={handleShowAuth}
-        />
+          <ErrorBoundary>
+            <RequestDeliveryModal
+              isOpen={showRequestModal}
+              onClose={() => setShowRequestModal(false)}
+              onShowAuth={handleShowAuth}
+            />
+          </ErrorBoundary>
 
-        <AuthModal
-          type={authType}
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          onSwitchToRegister={() => setAuthType("register")}
-          onSwitchToLogin={() => setAuthType("login")}
-        />
+          <ErrorBoundary>
+            <AuthModal
+              type={authType}
+              isOpen={showAuthModal}
+              onClose={() => setShowAuthModal(false)}
+              onSuccess={handleAuthSuccess}
+              onSwitchToRegister={() => setAuthType("register")}
+              onSwitchToLogin={() => setAuthType("login")}
+            />
+          </ErrorBoundary>
 
-        {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
-      </div>
-    </NotificationProvider>
+          {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
+        </div>
+      </NotificationProvider>
+    </SettingsProvider>
   )
 }

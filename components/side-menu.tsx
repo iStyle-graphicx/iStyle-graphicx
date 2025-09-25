@@ -13,6 +13,9 @@ import {
   LogIn,
   Bell,
   BookOpen,
+  ScrollText,
+  Shield,
+  Copyright,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -38,6 +41,9 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
     { id: "learnMoreSection", label: "Learn More", icon: BookOpen },
     { id: "settingsSection", label: "Settings", icon: Settings },
     { id: "helpSupportSection", label: "Help & Support", icon: HelpCircle },
+    { id: "termsSection", label: "Terms of Service", icon: ScrollText },
+    { id: "privacySection", label: "Privacy Policy", icon: Shield },
+    { id: "copyrightSection", label: "Copyright Policy", icon: Copyright },
   ]
 
   const handleNavigate = (sectionId: string) => {

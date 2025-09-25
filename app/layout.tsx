@@ -3,27 +3,33 @@ import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { OfflineIndicator } from "@/components/offline-indicator"
+import { FullScreenLoading } from "@/components/loading-fallback"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
 })
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains-mono",
+  display: "swap",
 })
 
 export const metadata: Metadata = {
   title: "VanGo - Premium Hardware Material Delivery",
   description:
     "VanGo connects you with reliable drivers for seamless transportation of your hardware materials. From cement to metal sheets, we've got your delivery needs covered.",
-  generator: "VanGo Delivery App",
-  keywords: "VanGo, delivery, hardware materials, transportation, South Africa, Pretoria, drivers",
-  authors: [{ name: "VanGo Team" }],
-  creator: "VanGo",
-  publisher: "VanGo",
+  generator: "VanGo Delivery App v1.1.0",
+  keywords: "VanGo, delivery, hardware materials, transportation, South Africa, Pretoria, drivers, logistics",
+  authors: [{ name: "VanGo Delivery (PTY) Ltd." }],
+  creator: "VanGo Delivery (PTY) Ltd.",
+  publisher: "VanGo Delivery (PTY) Ltd.",
   robots: "index, follow",
   openGraph: {
     title: "VanGo - Premium Hardware Material Delivery",
@@ -39,6 +45,14 @@ export const metadata: Metadata = {
   },
   viewport: "width=device-width, initial-scale=1",
   themeColor: "#f97316",
+  applicationName: "VanGo Delivery",
+  category: "business",
+  classification: "Delivery & Logistics",
+  other: {
+    company: "VanGo Delivery (PTY) Ltd.",
+    version: "1.1.0",
+    copyright: "© 2025 VanGo Delivery (PTY) Ltd. All rights reserved.",
+  },
 }
 
 export default function RootLayout({
@@ -50,11 +64,30 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} antialiased dark`}>
       <head>
         <link rel="icon" type="image/svg+xml" href="/vango-favicon.jpg" />
+        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#f97316" />
         <meta name="msapplication-TileColor" content="#f97316" />
+        <meta name="application-name" content="VanGo Delivery" />
+        <meta name="apple-mobile-web-app-title" content="VanGo" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
+
+        {/* Preload critical resources */}
+        <link rel="preload" href="/images/vango-logo-new.svg" as="image" />
+        <link rel="preload" href="/vango-favicon.jpg" as="image" />
+
+        {/* DNS prefetch for external resources */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//vercel.live" />
       </head>
       <body className="font-sans">
-        <Suspense fallback={null}>{children}</Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<FullScreenLoading />}>{children}</Suspense>
+          <OfflineIndicator />
+          <Toaster />
+        </ErrorBoundary>
         <Analytics />
       </body>
     </html>
