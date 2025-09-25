@@ -42,13 +42,62 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
   }, [userId])
 
   const fetchVerificationStatus = async () => {
-    const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).single()
+    try {
+      console.log("[v0] Fetching verification status for user:", userId)
 
-    if (data) {
-      setVerificationStatus(data)
-    } else if (error && error.code !== "PGRST116") {
-      // PGRST116 is "not found" error, which is expected for new users
-      console.error("[v0] Error fetching verification status:", error)
+      const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).single()
+
+      if (data) {
+        console.log("[v0] Verification data found:", data)
+        setVerificationStatus(data)
+      } else if (error) {
+        if (error.code === "PGRST116") {
+          console.log("[v0] No verification record found, creating default record")
+          await createDefaultVerificationRecord()
+        } else {
+          console.error("[v0] Error fetching verification status:", error)
+          toast({
+            title: "Error",
+            description: "Failed to load verification status",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (error) {
+      console.error("[v0] Unexpected error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load verification status",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const createDefaultVerificationRecord = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("user_verifications")
+        .insert({
+          user_id: userId,
+          email_verified: false,
+          phone_verified: false,
+          identity_verified: false,
+          payment_verified: false,
+          driver_license_verified: false,
+          vehicle_verified: false,
+          background_check_verified: false,
+        })
+        .select()
+        .single()
+
+      if (data) {
+        console.log("[v0] Created default verification record:", data)
+        setVerificationStatus(data)
+      } else if (error) {
+        console.error("[v0] Error creating verification record:", error)
+      }
+    } catch (error) {
+      console.error("[v0] Error creating default verification record:", error)
     }
   }
 
