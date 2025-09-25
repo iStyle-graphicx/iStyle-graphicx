@@ -112,7 +112,6 @@ export function DriverDashboard({ driverId }: { driverId: string }) {
           filter: "status=eq.pending",
         },
         (payload) => {
-          console.log("[v0] New delivery request:", payload)
           const newJob = {
             ...payload.new,
             distance: Math.round(Math.random() * 15 + 1),

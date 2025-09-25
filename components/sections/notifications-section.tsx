@@ -28,7 +28,6 @@ export function NotificationsSection({ user }: NotificationsSectionProps) {
           "postgres_changes",
           { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
           (payload) => {
-            console.log("[v0] Real-time notification update:", payload)
             fetchNotifications()
           },
         )

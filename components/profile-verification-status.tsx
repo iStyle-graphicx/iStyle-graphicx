@@ -43,19 +43,15 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
 
   const fetchVerificationStatus = async () => {
     try {
-      console.log("[v0] Fetching verification status for user:", userId)
-
       const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).single()
 
       if (data) {
-        console.log("[v0] Verification data found:", data)
         setVerificationStatus(data)
       } else if (error) {
         if (error.code === "PGRST116") {
-          console.log("[v0] No verification record found, creating default record")
           await createDefaultVerificationRecord()
         } else {
-          console.error("[v0] Error fetching verification status:", error)
+          console.error("Error fetching verification status:", error)
           toast({
             title: "Error",
             description: "Failed to load verification status",
@@ -64,7 +60,7 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
         }
       }
     } catch (error) {
-      console.error("[v0] Unexpected error:", error)
+      console.error("Unexpected error:", error)
       toast({
         title: "Error",
         description: "Failed to load verification status",
@@ -91,13 +87,12 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
         .single()
 
       if (data) {
-        console.log("[v0] Created default verification record:", data)
         setVerificationStatus(data)
       } else if (error) {
-        console.error("[v0] Error creating verification record:", error)
+        console.error("Error creating verification record:", error)
       }
     } catch (error) {
-      console.error("[v0] Error creating default verification record:", error)
+      console.error("Error creating default verification record:", error)
     }
   }
 

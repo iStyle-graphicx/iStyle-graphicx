@@ -51,8 +51,6 @@ export function InteractiveMap({
     const initializeMap = () => {
       if (!mapRef.current || !(window as any).L) return
 
-      console.log("[v0] Initializing Leaflet map")
-
       const L = (window as any).L
       const mapInstance = L.map(mapRef.current, {
         center: [PRETORIA_CENTER.lat, PRETORIA_CENTER.lng],
@@ -94,8 +92,6 @@ export function InteractiveMap({
             })
         })
       }
-
-      console.log("[v0] Leaflet map initialized successfully")
     }
 
     loadLeaflet()
@@ -106,8 +102,6 @@ export function InteractiveMap({
 
     const L = (window as any).L
     if (!L) return
-
-    console.log("[v0] Adding markers to map")
 
     // Clear existing markers
     markersRef.current.forEach((marker) => map.removeLayer(marker))
@@ -173,8 +167,6 @@ export function InteractiveMap({
 
       markersRef.current.push(polyline)
     }
-
-    console.log("[v0] Added", markersRef.current.length, "markers to map")
   }, [map, isLoaded, deliveries, showRoute, driverLocation])
 
   return (

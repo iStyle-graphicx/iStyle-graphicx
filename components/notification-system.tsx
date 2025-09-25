@@ -41,7 +41,6 @@ export function NotificationSystem({ userId }: { userId: string }) {
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log("[v0] Real-time notification:", payload)
           if (payload.eventType === "INSERT") {
             setNotifications((prev) => [payload.new as Notification, ...prev])
             setUnreadCount((prev) => prev + 1)

@@ -79,7 +79,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         setUnreadCount(data.filter((n) => !n.is_read).length)
       }
     } catch (error) {
-      console.error("[v0] Error fetching notifications:", error)
+      console.error("Error fetching notifications:", error)
     } finally {
       setIsLoading(false)
     }
@@ -99,8 +99,6 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
           filter: `user_id=eq.${userId}`,
         },
         (payload) => {
-          console.log("[v0] Real-time notification update:", payload)
-
           if (payload.eventType === "INSERT") {
             const newNotification = payload.new as Notification
             setNotifications((prev) => [newNotification, ...prev])
@@ -205,7 +203,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         setUnreadCount((prev) => Math.max(0, prev - 1))
       }
     } catch (error) {
-      console.error("[v0] Error marking notification as read:", error)
+      console.error("Error marking notification as read:", error)
     }
   }
 
@@ -228,7 +226,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         })
       }
     } catch (error) {
-      console.error("[v0] Error marking all notifications as read:", error)
+      console.error("Error marking all notifications as read:", error)
     }
   }
 
@@ -245,7 +243,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         })
       }
     } catch (error) {
-      console.error("[v0] Error deleting notification:", error)
+      console.error("Error deleting notification:", error)
     }
   }
 
@@ -264,7 +262,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
         })
       }
     } catch (error) {
-      console.error("[v0] Error clearing all notifications:", error)
+      console.error("Error clearing all notifications:", error)
     }
   }
 
@@ -276,10 +274,10 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
       })
 
       if (error) {
-        console.error("[v0] Error creating notification:", error)
+        console.error("Error creating notification:", error)
       }
     } catch (error) {
-      console.error("[v0] Error creating notification:", error)
+      console.error("Error creating notification:", error)
     }
   }
 
