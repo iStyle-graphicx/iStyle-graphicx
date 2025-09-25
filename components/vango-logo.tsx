@@ -26,16 +26,7 @@ export function VangoLogo({ size = "md", variant = "full", className }: VangoLog
   if (variant === "icon") {
     return (
       <div className={cn("flex items-center justify-center", className)}>
-        <div
-          className={cn(
-            "bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold",
-            sizeClasses[size],
-            size === "sm" ? "w-6" : size === "md" ? "w-8" : size === "lg" ? "w-12" : "w-16",
-            textSizeClasses[size],
-          )}
-        >
-          V
-        </div>
+        <img src="/images/vango-logo-new.svg" alt="Vango" className={cn(sizeClasses[size], "w-auto")} />
       </div>
     )
   }
@@ -49,20 +40,8 @@ export function VangoLogo({ size = "md", variant = "full", className }: VangoLog
   }
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <div
-        className={cn(
-          "bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center text-white font-bold",
-          sizeClasses[size],
-          size === "sm" ? "w-6" : size === "md" ? "w-8" : size === "lg" ? "w-12" : "w-16",
-          size === "sm" ? "text-xs" : size === "md" ? "text-sm" : size === "lg" ? "text-lg" : "text-xl",
-        )}
-      >
-        V
-      </div>
-      <span className={cn("font-bold text-orange-500", textSizeClasses[size])}>
-        Van<span className="text-orange-600">Go</span>
-      </span>
+    <div className={cn("flex items-center", className)}>
+      <img src="/images/vango-logo-new.svg" alt="Vango" className={cn(sizeClasses[size], "w-auto")} />
     </div>
   )
 }

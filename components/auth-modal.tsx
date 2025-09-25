@@ -120,7 +120,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
       <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
-            <img src="/images/vango-logo.png" alt="Vango Delivery" className="h-8" />
+            <img src="/images/vango-logo-new.svg" alt="Vango Delivery" className="h-8" />
           </div>
           <DialogTitle className="text-2xl font-bold text-center text-white">
             {type === "login" ? "Login to Vango" : "Join Vango Delivery"}
