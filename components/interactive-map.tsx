@@ -26,174 +26,155 @@ export function InteractiveMap({
   const [map, setMap] = useState<any>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [selectedArea, setSelectedArea] = useState<string | null>(null)
+  const markersRef = useRef<any[]>([])
 
   useEffect(() => {
-    const loadGoogleMaps = () => {
-      if ((window as any).google) {
+    const loadLeaflet = () => {
+      if ((window as any).L) {
         initializeMap()
         return
       }
 
+      // Load Leaflet CSS
+      const cssLink = document.createElement("link")
+      cssLink.rel = "stylesheet"
+      cssLink.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      document.head.appendChild(cssLink)
+
+      // Load Leaflet JS
       const script = document.createElement("script")
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "demo_key"}&libraries=places,geometry`
+      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       script.onload = initializeMap
       document.head.appendChild(script)
     }
 
     const initializeMap = () => {
-      if (!mapRef.current) return
+      if (!mapRef.current || !(window as any).L) return
 
-      const mapInstance = new (window as any).google.maps.Map(mapRef.current, {
-        center: PRETORIA_CENTER,
+      console.log("[v0] Initializing Leaflet map")
+
+      const L = (window as any).L
+      const mapInstance = L.map(mapRef.current, {
+        center: [PRETORIA_CENTER.lat, PRETORIA_CENTER.lng],
         zoom: 11,
-        styles: [
-          {
-            featureType: "all",
-            elementType: "geometry.fill",
-            stylers: [{ color: "#1f2937" }],
-          },
-          {
-            featureType: "water",
-            elementType: "geometry",
-            stylers: [{ color: "#374151" }],
-          },
-          {
-            featureType: "road",
-            elementType: "geometry",
-            stylers: [{ color: "#4b5563" }],
-          },
-          {
-            featureType: "road",
-            elementType: "labels.text.fill",
-            stylers: [{ color: "#9ca3af" }],
-          },
-        ],
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
+        zoomControl: true,
+        attributionControl: true,
       })
+
+      // Add OpenStreetMap tiles
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(mapInstance)
 
       setMap(mapInstance)
       setIsLoaded(true)
 
       // Add click listener for location selection
       if (onLocationSelect) {
-        mapInstance.addListener("click", (event: any) => {
-          const lat = event.latLng.lat()
-          const lng = event.latLng.lng()
+        mapInstance.on("click", (event: any) => {
+          const lat = event.latlng.lat
+          const lng = event.latlng.lng
 
-          // Reverse geocode to get address
-          const geocoder = new (window as any).google.maps.Geocoder()
-          geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-            if (status === "OK" && results[0]) {
+          // Simple reverse geocoding using Nominatim (free)
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+            .then((response) => response.json())
+            .then((data) => {
               onLocationSelect({
                 lat,
                 lng,
-                address: results[0].formatted_address,
+                address: data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
               })
-            }
-          })
+            })
+            .catch(() => {
+              onLocationSelect({
+                lat,
+                lng,
+                address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+              })
+            })
         })
       }
+
+      console.log("[v0] Leaflet map initialized successfully")
     }
 
-    loadGoogleMaps()
+    loadLeaflet()
   }, [onLocationSelect])
 
   useEffect(() => {
     if (!map || !isLoaded) return
 
+    const L = (window as any).L
+    if (!L) return
+
+    console.log("[v0] Adding markers to map")
+
     // Clear existing markers
-    // In a real implementation, you'd track and clear markers properly
+    markersRef.current.forEach((marker) => map.removeLayer(marker))
+    markersRef.current = []
 
     // Add Pretoria area markers
     PRETORIA_AREAS.forEach((area) => {
-      const marker = new (window as any).google.maps.Marker({
-        position: { lat: area.lat, lng: area.lng },
-        map: map,
-        title: area.name,
-        icon: {
-          path: (window as any).google.maps.SymbolPath.CIRCLE,
-          scale: 8,
-          fillColor: DELIVERY_ZONES[area.zone as keyof typeof DELIVERY_ZONES].color,
-          fillOpacity: 0.8,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-        },
-      })
+      const marker = L.circleMarker([area.lat, area.lng], {
+        radius: 8,
+        fillColor: DELIVERY_ZONES[area.zone as keyof typeof DELIVERY_ZONES].color,
+        fillOpacity: 0.8,
+        color: "#ffffff",
+        weight: 2,
+      }).addTo(map)
 
-      marker.addListener("click", () => {
+      marker.bindPopup(area.name)
+      marker.on("click", () => {
         setSelectedArea(area.name)
       })
+
+      markersRef.current.push(marker)
     })
 
     // Add delivery markers
     deliveries.forEach((delivery) => {
-      const marker = new (window as any).google.maps.Marker({
-        position: { lat: delivery.lat, lng: delivery.lng },
-        map: map,
-        title: delivery.address,
-        icon: {
-          path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 6,
-          fillColor: delivery.type === "pickup" ? "#f97316" : "#10b981",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 1,
-        },
-      })
+      const color = delivery.type === "pickup" ? "#f97316" : "#10b981"
+      const marker = L.marker([delivery.lat, delivery.lng], {
+        icon: L.divIcon({
+          html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>`,
+          className: "custom-div-icon",
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+      }).addTo(map)
+
+      marker.bindPopup(delivery.address)
+      markersRef.current.push(marker)
     })
 
     // Add driver location if provided
     if (driverLocation) {
-      ;new (window as any).google.maps.Marker({
-        position: driverLocation,
-        map: map,
-        title: "Driver Location",
-        icon: {
-          path: (window as any).google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-          scale: 10,
-          fillColor: "#3b82f6",
-          fillOpacity: 1,
-          strokeColor: "#ffffff",
-          strokeWeight: 2,
-          rotation: 45,
-        },
-      })
+      const driverMarker = L.marker([driverLocation.lat, driverLocation.lng], {
+        icon: L.divIcon({
+          html: `<div style="background-color: #3b82f6; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; transform: rotate(45deg);"></div>`,
+          className: "custom-div-icon",
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+        }),
+      }).addTo(map)
+
+      driverMarker.bindPopup("Driver Location")
+      markersRef.current.push(driverMarker)
     }
 
-    // Draw route if requested
+    // Draw route if requested (simplified polyline)
     if (showRoute && deliveries.length >= 2) {
-      const directionsService = new (window as any).google.maps.DirectionsService()
-      const directionsRenderer = new (window as any).google.maps.DirectionsRenderer({
-        polylineOptions: {
-          strokeColor: "#f97316",
-          strokeWeight: 4,
-        },
-        suppressMarkers: true,
-      })
+      const routePoints = deliveries.map((d) => [d.lat, d.lng])
+      const polyline = L.polyline(routePoints, {
+        color: "#f97316",
+        weight: 4,
+        opacity: 0.8,
+      }).addTo(map)
 
-      directionsRenderer.setMap(map)
-
-      const waypoints = deliveries.slice(1, -1).map((delivery) => ({
-        location: { lat: delivery.lat, lng: delivery.lng },
-        stopover: true,
-      }))
-
-      directionsService.route(
-        {
-          origin: { lat: deliveries[0].lat, lng: deliveries[0].lng },
-          destination: { lat: deliveries[deliveries.length - 1].lat, lng: deliveries[deliveries.length - 1].lng },
-          waypoints: waypoints,
-          travelMode: (window as any).google.maps.TravelMode.DRIVING,
-        },
-        (result: any, status: any) => {
-          if (status === "OK") {
-            directionsRenderer.setDirections(result)
-          }
-        },
-      )
+      markersRef.current.push(polyline)
     }
+
+    console.log("[v0] Added", markersRef.current.length, "markers to map")
   }, [map, isLoaded, deliveries, showRoute, driverLocation])
 
   return (
@@ -252,7 +233,7 @@ export function InteractiveMap({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => map?.setCenter(PRETORIA_CENTER)}
+          onClick={() => map?.setView([PRETORIA_CENTER.lat, PRETORIA_CENTER.lng], 11)}
           className="bg-slate-900/90 backdrop-blur-sm border-slate-700 text-white hover:bg-slate-800"
         >
           <Navigation className="w-4 h-4" />
@@ -261,7 +242,7 @@ export function InteractiveMap({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => map?.setCenter(driverLocation)}
+            onClick={() => map?.setView([driverLocation.lat, driverLocation.lng], 13)}
             className="bg-slate-900/90 backdrop-blur-sm border-slate-700 text-white hover:bg-slate-800"
           >
             <Truck className="w-4 h-4" />

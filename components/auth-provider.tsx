@@ -55,26 +55,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = {
               id: session.user.id,
               email: session.user.email!,
-              name: `${profile.first_name} ${profile.last_name}`.trim(),
+              name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.email || "User",
               userType: profile.user_type as "customer" | "driver",
               joinDate: session.user.created_at,
             }
             setUser(userData)
-            localStorage.setItem("vangoUser", JSON.stringify(userData))
+            try {
+              localStorage.setItem("vangoUser", JSON.stringify(userData))
+            } catch (storageError) {
+              console.warn("[v0] Failed to save user to localStorage:", storageError)
+            }
           }
         } else {
           // Check localStorage for existing user data
-          const userData = localStorage.getItem("vangoUser")
-          if (userData) {
-            setUser(JSON.parse(userData))
+          try {
+            const userData = localStorage.getItem("vangoUser")
+            if (userData) {
+              setUser(JSON.parse(userData))
+            }
+          } catch (storageError) {
+            console.warn("[v0] Failed to read from localStorage:", storageError)
           }
         }
       } catch (error) {
         console.error("[v0] Auth session error:", error)
         // Fallback to localStorage
-        const userData = localStorage.getItem("vangoUser")
-        if (userData) {
-          setUser(JSON.parse(userData))
+        try {
+          const userData = localStorage.getItem("vangoUser")
+          if (userData) {
+            setUser(JSON.parse(userData))
+          }
+        } catch (storageError) {
+          console.warn("[v0] Failed to read from localStorage:", storageError)
         }
       }
       setIsLoading(false)
@@ -94,16 +106,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = {
               id: session.user.id,
               email: session.user.email!,
-              name: `${profile.first_name} ${profile.last_name}`.trim(),
+              name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.email || "User",
               userType: profile.user_type as "customer" | "driver",
               joinDate: session.user.created_at,
             }
             setUser(userData)
-            localStorage.setItem("vangoUser", JSON.stringify(userData))
+            try {
+              localStorage.setItem("vangoUser", JSON.stringify(userData))
+            } catch (storageError) {
+              console.warn("[v0] Failed to save user to localStorage:", storageError)
+            }
           }
         } else if (event === "SIGNED_OUT") {
           setUser(null)
-          localStorage.removeItem("vangoUser")
+          try {
+            localStorage.removeItem("vangoUser")
+          } catch (storageError) {
+            console.warn("[v0] Failed to remove user from localStorage:", storageError)
+          }
         }
       } catch (error) {
         console.error("[v0] Auth state change error:", error)
@@ -115,7 +135,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = (userData: User) => {
     setUser(userData)
-    localStorage.setItem("vangoUser", JSON.stringify(userData))
+    try {
+      localStorage.setItem("vangoUser", JSON.stringify(userData))
+    } catch (storageError) {
+      console.warn("[v0] Failed to save user to localStorage:", storageError)
+    }
   }
 
   const logout = async () => {
@@ -127,7 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("[v0] Logout error:", error)
     }
     setUser(null)
-    localStorage.removeItem("vangoUser")
+    try {
+      localStorage.removeItem("vangoUser")
+    } catch (storageError) {
+      console.warn("[v0] Failed to remove user from localStorage:", storageError)
+    }
   }
 
   return (

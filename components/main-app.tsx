@@ -17,6 +17,8 @@ import { HelpSupportSection } from "@/components/sections/help-support-section"
 import { NotificationsSection } from "@/components/sections/notifications-section"
 import { LearnMoreSection } from "@/components/sections/learn-more-section"
 import { RequestDeliveryModal } from "@/components/request-delivery-modal"
+import { AuthModal } from "@/components/auth-modal"
+import { NotificationProvider } from "@/hooks/use-notifications"
 
 interface MainAppProps {
   onLogout: () => void
@@ -26,6 +28,8 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [currentSection, setCurrentSection] = useState("homeSection")
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [showRequestModal, setShowRequestModal] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
+  const [authType, setAuthType] = useState<"login" | "register">("register")
   const [currentUser, setCurrentUser] = useState<any>(null)
 
   useEffect(() => {
@@ -47,6 +51,18 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   const handleRequestDriver = (driver: any) => {
     setShowRequestModal(true)
+  }
+
+  const handleAuthSuccess = () => {
+    const userData = localStorage.getItem("vangoUser")
+    if (userData) {
+      setCurrentUser(JSON.parse(userData))
+    }
+  }
+
+  const handleShowAuth = () => {
+    setAuthType("register")
+    setShowAuthModal(true)
   }
 
   const renderCurrentSection = () => {
@@ -81,29 +97,44 @@ export function MainApp({ onLogout }: MainAppProps) {
   }
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
-      <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
+    <NotificationProvider userId={currentUser?.id}>
+      <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+        <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
 
-      <SideMenu
-        isOpen={isMenuOpen}
-        onClose={() => setIsMenuOpen(false)}
-        currentSection={currentSection}
-        onNavigate={setCurrentSection}
-        user={currentUser}
-        onLogout={handleLogout}
-      />
+        <SideMenu
+          isOpen={isMenuOpen}
+          onClose={() => setIsMenuOpen(false)}
+          currentSection={currentSection}
+          onNavigate={setCurrentSection}
+          user={currentUser}
+          onLogout={handleLogout}
+        />
 
-      <main className="pb-20 pt-4">{renderCurrentSection()}</main>
+        <main className="pb-20 pt-4">{renderCurrentSection()}</main>
 
-      <BottomNav
-        currentSection={currentSection}
-        onNavigate={setCurrentSection}
-        onRequestDelivery={() => setShowRequestModal(true)}
-      />
+        <BottomNav
+          currentSection={currentSection}
+          onNavigate={setCurrentSection}
+          onRequestDelivery={() => setShowRequestModal(true)}
+        />
 
-      <RequestDeliveryModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
+        <RequestDeliveryModal
+          isOpen={showRequestModal}
+          onClose={() => setShowRequestModal(false)}
+          onShowAuth={handleShowAuth}
+        />
 
-      {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
-    </div>
+        <AuthModal
+          type={authType}
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          onSwitchToRegister={() => setAuthType("register")}
+          onSwitchToLogin={() => setAuthType("login")}
+        />
+
+        {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
+      </div>
+    </NotificationProvider>
   )
 }

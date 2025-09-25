@@ -1,14 +1,15 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { User, Camera, Edit, Save, X, Phone, Mail, Calendar, Star, Package, History } from "lucide-react"
+import { User, Edit, Save, X, Phone, Mail, Calendar, Star, Package, History, Settings } from "lucide-react"
+import { ProfileAvatarUpload } from "@/components/profile-avatar-upload"
+import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
+import { ProfileVerificationStatus } from "@/components/profile-verification-status"
 
 interface ProfileSectionProps {
   user: any
@@ -19,9 +20,8 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
   const [profile, setProfile] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [deliveryStats, setDeliveryStats] = useState({ total: 0, pending: 0, completed: 0 })
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [deliveryStats, setDeliveryStats] = useState({ total: 0, pending: 0, completed: 0, rating: 0 })
+  const [showAddPayment, setShowAddPayment] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -38,7 +38,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         user_type: "customer",
         created_at: "2023-01-15",
       })
-      setDeliveryStats({ total: 0, pending: 0, completed: 0 })
+      setDeliveryStats({ total: 0, pending: 0, completed: 0, rating: 0 })
     }
   }, [user])
 
@@ -47,67 +47,43 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
 
     if (data) {
       setProfile(data)
-      setAvatarUrl(data.avatar_url)
     }
   }
 
   const fetchDeliveryStats = async () => {
-    const { data, error } = await supabase.from("deliveries").select("status").eq("customer_id", user.id)
+    // Fetch delivery statistics
+    const { data: deliveries, error: deliveryError } = await supabase
+      .from("deliveries")
+      .select("status")
+      .eq(user.user_type === "driver" ? "driver_id" : "customer_id", user.id)
 
-    if (data) {
-      const stats = data.reduce(
+    if (deliveries) {
+      const stats = deliveries.reduce(
         (acc, delivery) => {
           acc.total++
-          if (delivery.status === "pending" || delivery.status === "in_transit") {
+          if (delivery.status === "pending" || delivery.status === "accepted" || delivery.status === "picked_up") {
             acc.pending++
-          } else if (delivery.status === "delivered") {
+          } else if (delivery.status === "completed") {
             acc.completed++
           }
           return acc
         },
-        { total: 0, pending: 0, completed: 0 },
+        { total: 0, pending: 0, completed: 0, rating: 0 },
       )
+
+      // Fetch average rating
+      const { data: ratings } = await supabase
+        .from("ratings")
+        .select("rating")
+        .eq(user.user_type === "driver" ? "driver_id" : "customer_id", user.id)
+
+      if (ratings && ratings.length > 0) {
+        const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+        stats.rating = Math.round(avgRating * 10) / 10
+      }
 
       setDeliveryStats(stats)
     }
-  }
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    setIsLoading(true)
-
-    // Create a file URL for preview
-    const fileUrl = URL.createObjectURL(file)
-    setAvatarUrl(fileUrl)
-
-    // In a real app, you would upload to Supabase Storage
-    // For now, we'll just update the profile with a placeholder
-    if (user) {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          avatar_url: fileUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id)
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update profile photo",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Success",
-          description: "Profile photo updated successfully",
-        })
-      }
-    }
-
-    setIsLoading(false)
   }
 
   const handleSaveProfile = async () => {
@@ -156,6 +132,10 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
     }
   }
 
+  const handleAvatarUpdate = (url: string) => {
+    setProfile({ ...profile, avatar_url: url })
+  }
+
   if (!user && !profile) {
     return (
       <div className="px-4 pt-6 pb-16">
@@ -190,28 +170,27 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         )}
       </div>
 
+      {/* Profile Completion Banner */}
+      {user && (
+        <ProfileCompletionBanner
+          user={user}
+          profile={profile}
+          onEditProfile={() => setIsEditing(true)}
+          onAddPayment={() => setShowAddPayment(true)}
+        />
+      )}
+
       {/* Profile Header */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="relative">
-              <div className="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center text-white text-2xl overflow-hidden">
-                {avatarUrl ? (
-                  <img src={avatarUrl || "/placeholder.svg"} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10" />
-                )}
-              </div>
-              {isEditing && (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white hover:bg-orange-600 transition-colors"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
-              )}
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />
-            </div>
+            <ProfileAvatarUpload
+              userId={user?.id || "demo"}
+              currentAvatarUrl={profile?.avatar_url}
+              onAvatarUpdate={handleAvatarUpdate}
+              size="lg"
+              editable={isEditing && !!user}
+            />
             <div className="flex-1">
               {isEditing ? (
                 <div className="space-y-2">
@@ -249,6 +228,12 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
                     <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
                       <Phone className="w-4 h-4" />
                       <span>{profile.phone}</span>
+                    </div>
+                  )}
+                  {deliveryStats.rating > 0 && (
+                    <div className="flex items-center gap-2 text-yellow-400 text-sm mt-1">
+                      <Star className="w-4 h-4 fill-current" />
+                      <span>{deliveryStats.rating} rating</span>
                     </div>
                   )}
                 </>
@@ -304,12 +289,15 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
+      {/* Verification Status */}
+      {user && <ProfileVerificationStatus userId={user.id} userType={profile?.user_type || "customer"} />}
+
       {/* Delivery Statistics */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
             <Package className="w-5 h-5" />
-            Delivery Statistics
+            {profile?.user_type === "driver" ? "Driver Statistics" : "Delivery Statistics"}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -320,13 +308,19 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
             </div>
             <div>
               <div className="text-2xl font-bold text-yellow-500">{deliveryStats.pending}</div>
-              <div className="text-xs text-gray-400">Pending</div>
+              <div className="text-xs text-gray-400">Active</div>
             </div>
             <div>
               <div className="text-2xl font-bold text-green-500">{deliveryStats.completed}</div>
               <div className="text-xs text-gray-400">Completed</div>
             </div>
           </div>
+          {deliveryStats.rating > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10 text-center">
+              <div className="text-2xl font-bold text-yellow-500">{deliveryStats.rating}</div>
+              <div className="text-xs text-gray-400">Average Rating</div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -348,8 +342,8 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
             View Delivery History
           </Button>
           <Button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center gap-2">
-            <Star className="w-4 h-4" />
-            Rate & Review
+            <Settings className="w-4 h-4" />
+            Account Settings
           </Button>
           <Button
             onClick={onLogout}

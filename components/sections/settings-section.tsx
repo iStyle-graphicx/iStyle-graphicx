@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { User, CreditCard, Bell, Globe, Palette, Trash2, Info } from "lucide-react"
+import { ChangePasswordModal, AddPaymentMethodModal, BillingHistoryModal } from "@/components/settings-modals"
 
 interface SettingsSectionProps {
   user: any
@@ -26,12 +27,16 @@ export function SettingsSection({ user }: SettingsSectionProps) {
     marketing: false,
   })
   const [isLoading, setIsLoading] = useState(false)
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false)
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false)
+  const [showBillingHistoryModal, setShowBillingHistoryModal] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     if (user) {
       fetchProfile()
       fetchPaymentMethods()
+      fetchNotificationPreferences()
     }
   }, [user])
 
@@ -45,6 +50,28 @@ export function SettingsSection({ user }: SettingsSectionProps) {
     const { data, error } = await supabase.from("payment_methods").select("*").eq("user_id", user.id)
 
     if (data) setPaymentMethods(data)
+  }
+
+  const fetchNotificationPreferences = async () => {
+    const { data, error } = await supabase.from("notification_preferences").select("*").eq("user_id", user.id).single()
+
+    if (data) {
+      setNotifications({
+        email: data.email_notifications,
+        push: data.push_notifications,
+        sms: data.sms_notifications,
+        marketing: data.marketing_communications,
+      })
+    } else {
+      // Create default preferences if none exist
+      await supabase.from("notification_preferences").insert({
+        user_id: user.id,
+        email_notifications: true,
+        push_notifications: true,
+        sms_notifications: false,
+        marketing_communications: false,
+      })
+    }
   }
 
   const updateProfile = async (field: string, value: string) => {
@@ -68,6 +95,45 @@ export function SettingsSection({ user }: SettingsSectionProps) {
       fetchProfile()
     }
     setIsLoading(false)
+  }
+
+  const updateNotificationPreferences = async (field: string, value: boolean) => {
+    const { error } = await supabase.from("notification_preferences").upsert({
+      user_id: user.id,
+      [`${field}_notifications`]: value,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update notification preferences",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Success",
+        description: "Notification preferences updated",
+      })
+    }
+  }
+
+  const removePaymentMethod = async (methodId: string) => {
+    const { error } = await supabase.from("payment_methods").delete().eq("id", methodId)
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove payment method",
+        variant: "destructive",
+      })
+    } else {
+      toast({
+        title: "Success",
+        description: "Payment method removed successfully",
+      })
+      fetchPaymentMethods()
+    }
   }
 
   const clearCache = () => {
@@ -147,7 +213,12 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               <h4 className="font-semibold text-white">Change Password</h4>
               <p className="text-sm text-gray-400">Update your account password</p>
             </div>
-            <Button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 text-sm">Change</Button>
+            <Button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 text-sm"
+            >
+              Change
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -169,7 +240,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                   <div>
                     <p className="text-white font-medium">{method.type.toUpperCase()}</p>
                     <p className="text-sm text-gray-400">
-                      {method.type === "mastercard"
+                      {method.type === "mastercard" || method.type === "visa"
                         ? `****${method.details.last4}`
                         : method.details.email || method.details.account}
                     </p>
@@ -178,6 +249,7 @@ export function SettingsSection({ user }: SettingsSectionProps) {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => removePaymentMethod(method.id)}
                   className="border-red-600 text-red-400 hover:bg-red-600/10 bg-transparent"
                 >
                   Remove
@@ -186,14 +258,24 @@ export function SettingsSection({ user }: SettingsSectionProps) {
             ))}
           </div>
 
-          <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">Add Payment Method</Button>
+          <Button
+            onClick={() => setShowAddPaymentModal(true)}
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+          >
+            Add Payment Method
+          </Button>
 
           <div className="flex justify-between items-center py-3 border-t border-white/10">
             <div>
               <h4 className="font-semibold text-white">Billing History</h4>
               <p className="text-sm text-gray-400">View your payment history and receipts</p>
             </div>
-            <Button className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 text-sm">View History</Button>
+            <Button
+              onClick={() => setShowBillingHistoryModal(true)}
+              className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 text-sm"
+            >
+              View History
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -215,7 +297,10 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               </div>
               <Switch
                 checked={notifications.email}
-                onCheckedChange={(checked) => setNotifications({ ...notifications, email: checked })}
+                onCheckedChange={(checked) => {
+                  setNotifications({ ...notifications, email: checked })
+                  updateNotificationPreferences("email", checked)
+                }}
               />
             </div>
 
@@ -226,7 +311,10 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               </div>
               <Switch
                 checked={notifications.push}
-                onCheckedChange={(checked) => setNotifications({ ...notifications, push: checked })}
+                onCheckedChange={(checked) => {
+                  setNotifications({ ...notifications, push: checked })
+                  updateNotificationPreferences("push", checked)
+                }}
               />
             </div>
 
@@ -237,7 +325,10 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               </div>
               <Switch
                 checked={notifications.sms}
-                onCheckedChange={(checked) => setNotifications({ ...notifications, sms: checked })}
+                onCheckedChange={(checked) => {
+                  setNotifications({ ...notifications, sms: checked })
+                  updateNotificationPreferences("sms", checked)
+                }}
               />
             </div>
 
@@ -248,7 +339,10 @@ export function SettingsSection({ user }: SettingsSectionProps) {
               </div>
               <Switch
                 checked={notifications.marketing}
-                onCheckedChange={(checked) => setNotifications({ ...notifications, marketing: checked })}
+                onCheckedChange={(checked) => {
+                  setNotifications({ ...notifications, marketing: checked })
+                  updateNotificationPreferences("marketing", checked)
+                }}
               />
             </div>
           </div>
@@ -330,6 +424,25 @@ export function SettingsSection({ user }: SettingsSectionProps) {
           </div>
         </CardContent>
       </Card>
+
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        userId={user.id}
+      />
+
+      <AddPaymentMethodModal
+        isOpen={showAddPaymentModal}
+        onClose={() => setShowAddPaymentModal(false)}
+        userId={user.id}
+        onPaymentMethodAdded={fetchPaymentMethods}
+      />
+
+      <BillingHistoryModal
+        isOpen={showBillingHistoryModal}
+        onClose={() => setShowBillingHistoryModal(false)}
+        userId={user.id}
+      />
     </div>
   )
 }

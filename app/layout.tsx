@@ -1,16 +1,44 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import "./globals.css"
+
+const geistSans = Geist({
+  subsets: ["latin"],
+  variable: "--font-geist-sans",
+})
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-geist-mono",
+})
 
 export const metadata: Metadata = {
   title: "VanGo - Premium Hardware Material Delivery",
   description:
     "VanGo connects you with reliable drivers for seamless transportation of your hardware materials. From cement to metal sheets, we've got your delivery needs covered.",
   generator: "VanGo Delivery App",
+  keywords: "VanGo, delivery, hardware materials, transportation, South Africa, Pretoria, drivers",
+  authors: [{ name: "VanGo Team" }],
+  creator: "VanGo",
+  publisher: "VanGo",
+  robots: "index, follow",
+  openGraph: {
+    title: "VanGo - Premium Hardware Material Delivery",
+    description: "Reliable drivers for seamless transportation of your hardware materials",
+    type: "website",
+    locale: "en_ZA",
+    siteName: "VanGo",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VanGo - Premium Hardware Material Delivery",
+    description: "Reliable drivers for seamless transportation of your hardware materials",
+  },
+  viewport: "width=device-width, initial-scale=1",
+  themeColor: "#f97316",
 }
 
 export default function RootLayout({
@@ -19,8 +47,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased dark`}>
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/vango-favicon.jpg" />
+        <meta name="theme-color" content="#f97316" />
+        <meta name="msapplication-TileColor" content="#f97316" />
+      </head>
+      <body className="font-sans">
         <Suspense fallback={null}>{children}</Suspense>
         <Analytics />
       </body>

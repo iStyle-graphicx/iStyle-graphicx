@@ -21,9 +21,11 @@ interface AuthModalProps {
 
 export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister, onSwitchToLogin }: AuthModalProps) {
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     password: "",
+    phone: "",
     userType: "customer",
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -54,29 +56,34 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           const userData = {
             id: data.user.id,
             email: data.user.email,
-            name: profile ? `${profile.first_name} ${profile.last_name}` : formData.name,
+            firstName: profile?.first_name || "",
+            lastName: profile?.last_name || "",
+            phone: profile?.phone || "",
             userType: profile?.user_type || "customer",
             joinDate: data.user.created_at,
+            avatar_url: profile?.avatar_url || null,
           }
 
           localStorage.setItem("vangoUser", JSON.stringify(userData))
 
           toast({
             title: "Login successful!",
-            description: "Welcome back to VanGo",
+            description: `Welcome back to Vango Delivery${profile?.user_type === "driver" ? " Driver Portal" : ""}`,
           })
           onSuccess()
           onClose()
         }
       } else {
+        // Registration
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
             emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
             data: {
-              first_name: formData.name.split(" ")[0] || "",
-              last_name: formData.name.split(" ").slice(1).join(" ") || "",
+              first_name: formData.firstName,
+              last_name: formData.lastName,
+              phone: formData.phone,
               user_type: formData.userType,
             },
           },
@@ -91,12 +98,13 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
         } else {
           toast({
             title: "Registration successful!",
-            description: "Please check your email to confirm your account",
+            description: "Please check your email to confirm your account before you can start using Vango Delivery.",
           })
           onClose()
         }
       }
     } catch (error) {
+      console.error("[v0] Auth error:", error)
       toast({
         title: "Error",
         description: "Something went wrong. Please try again.",
@@ -111,27 +119,63 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
         <DialogHeader>
+          <div className="flex items-center justify-center mb-4">
+            <img src="/images/vango-logo.png" alt="Vango Delivery" className="h-8" />
+          </div>
           <DialogTitle className="text-2xl font-bold text-center text-white">
-            {type === "login" ? "Login to VanGo" : "Create an Account"}
+            {type === "login" ? "Login to Vango" : "Join Vango Delivery"}
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {type === "register" && (
-            <div>
-              <Label htmlFor="name" className="text-white">
-                Full Name
-              </Label>
-              <Input
-                id="name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-slate-700 border-slate-600 text-white"
-                placeholder="Your name"
-                required
-              />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="firstName" className="text-white">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    className="bg-slate-700 border-slate-600 text-white"
+                    placeholder="First name"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lastName" className="text-white">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    className="bg-slate-700 border-slate-600 text-white"
+                    placeholder="Last name"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="phone" className="text-white">
+                  Phone Number
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="bg-slate-700 border-slate-600 text-white"
+                  placeholder="+27 123 456 789"
+                  required
+                />
+              </div>
+            </>
           )}
 
           <div>
@@ -144,7 +188,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="bg-slate-700 border-slate-600 text-white"
-              placeholder="Your email"
+              placeholder="your.email@example.com"
               required
             />
           </div>
@@ -159,7 +203,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="bg-slate-700 border-slate-600 text-white"
-              placeholder={type === "login" ? "Your password" : "Create a password"}
+              placeholder={type === "login" ? "Your password" : "Create a secure password"}
               required
               minLength={6}
             />
@@ -168,7 +212,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           {type === "register" && (
             <div>
               <Label htmlFor="userType" className="text-white">
-                I am a:
+                I want to:
               </Label>
               <Select
                 value={formData.userType}
@@ -178,10 +222,15 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-700 border-slate-600">
-                  <SelectItem value="customer">Customer</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
+                  <SelectItem value="customer">Request deliveries (Customer)</SelectItem>
+                  <SelectItem value="driver">Deliver packages (Driver)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-gray-400 mt-1">
+                {formData.userType === "customer"
+                  ? "Order deliveries and track your packages"
+                  : "Join our driver network and earn money"}
+              </p>
             </div>
           )}
 
