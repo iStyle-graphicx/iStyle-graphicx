@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { MapPin, Star, Phone, Car, User } from "lucide-react"
+import { InteractiveMap } from "@/components/interactive-map"
+import { MapPin, Star, Phone, Car, User, Navigation, CheckCircle, Zap, TrendingUp } from "lucide-react"
+import { DriverMatchingModal } from "@/components/driver-matching-modal"
+import type { MatchingCriteria } from "@/lib/driver-matching"
 
 interface Driver {
   id: string
@@ -33,6 +36,9 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [showMap, setShowMap] = useState(true)
+  const [showMatchingModal, setShowMatchingModal] = useState(false)
+  const [matchingCriteria, setMatchingCriteria] = useState<MatchingCriteria | null>(null)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -43,81 +49,84 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
   const loadAvailableDrivers = async () => {
     setIsLoading(true)
 
-    // Load sample drivers for Pretoria area
     const sampleDrivers: Driver[] = [
       {
         id: "1",
-        name: "John Smith",
+        name: "Thabo Mthembu",
         rating: 4.8,
-        vehicle_type: "Bakkie",
+        vehicle_type: "Toyota Hilux",
         location: "Centurion",
         distance: "2.3 km",
         status: "available",
         phone: "+27 82 123 4567",
         experience_years: 5,
         completed_deliveries: 234,
+        avatar_url: "/african-male-driver.jpg",
         lat: -25.8601,
         lng: 28.1878,
       },
       {
         id: "2",
-        name: "Sarah Johnson",
+        name: "Nomsa Dlamini",
         rating: 4.9,
-        vehicle_type: "Truck",
+        vehicle_type: "Isuzu Truck",
         location: "Hatfield",
         distance: "3.1 km",
         status: "available",
         phone: "+27 83 987 6543",
         experience_years: 8,
         completed_deliveries: 456,
+        avatar_url: "/african-woman-driver.jpg",
         lat: -25.7479,
         lng: 28.2293,
       },
       {
         id: "3",
-        name: "Mike Williams",
+        name: "Sipho Ndlovu",
         rating: 4.7,
-        vehicle_type: "Van",
+        vehicle_type: "Ford Ranger",
         location: "Brooklyn",
         distance: "1.8 km",
         status: "busy",
         phone: "+27 84 555 1234",
         experience_years: 3,
         completed_deliveries: 189,
+        avatar_url: "/african-male-driver.jpg",
         lat: -25.7615,
         lng: 28.2292,
       },
       {
         id: "4",
-        name: "Lisa Brown",
+        name: "Lerato Molefe",
         rating: 4.6,
-        vehicle_type: "Bakkie",
+        vehicle_type: "Nissan NP200",
         location: "Menlyn",
         distance: "4.2 km",
         status: "available",
         phone: "+27 85 777 8888",
         experience_years: 4,
         completed_deliveries: 167,
+        avatar_url: "/african-woman-driver.jpg",
         lat: -25.7863,
         lng: 28.2775,
       },
       {
         id: "5",
-        name: "David Wilson",
+        name: "Mandla Khumalo",
         rating: 4.9,
-        vehicle_type: "Truck",
+        vehicle_type: "Mercedes Sprinter",
         location: "Arcadia",
         distance: "2.7 km",
         status: "available",
         phone: "+27 86 333 2222",
         experience_years: 7,
         completed_deliveries: 389,
+        avatar_url: "/african-male-driver.jpg",
         lat: -25.7545,
         lng: 28.2314,
       },
     ]
 
-    // If user is authenticated, try to load from database
     if (user) {
       const { data, error } = await supabase
         .from("drivers")
@@ -151,69 +160,129 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "available":
-        return "bg-green-500"
-      case "busy":
-        return "bg-orange-500"
-      case "offline":
-        return "bg-gray-500"
-      default:
-        return "bg-gray-500"
+  const handleSmartMatching = () => {
+    const criteria: MatchingCriteria = {
+      customerLocation: { lat: -25.7479, lng: 28.2293 }, // Pretoria CBD
+      deliveryLocation: { lat: -25.7667, lng: 28.3167 }, // Lynnwood
+      materialType: "cement",
+      weight: 500,
+      urgency: "medium",
+      maxDistance: 15,
+      minRating: 4.0,
+    }
+
+    setMatchingCriteria(criteria)
+    setShowMatchingModal(true)
+  }
+
+  const handleDriverMatched = (driverId: string) => {
+    const driver = drivers.find((d) => d.id === driverId)
+    if (driver) {
+      setSelectedDriver(driver)
+      onRequestDriver(driver)
     }
   }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "available":
-        return "Available"
-      case "busy":
-        return "Busy"
-      case "offline":
-        return "Offline"
-      default:
-        return "Unknown"
-    }
-  }
+  const driverLocations = drivers
+    .filter((driver) => driver.lat && driver.lng)
+    .map((driver) => ({
+      id: driver.id,
+      address: driver.location,
+      lat: driver.lat!,
+      lng: driver.lng!,
+      type: "pickup" as const,
+      zone: "central" as const,
+    }))
 
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">Available Drivers</h2>
-        <Button
-          onClick={loadAvailableDrivers}
-          variant="outline"
-          className="border-orange-500 text-orange-500 hover:bg-orange-500/10 bg-transparent"
-          disabled={isLoading}
-        >
-          {isLoading ? "Loading..." : "Refresh"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleSmartMatching}
+            className="bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white"
+            size="sm"
+          >
+            <Zap className="w-4 h-4 mr-1" />
+            Smart Match
+          </Button>
+          <Button
+            onClick={() => setShowMap(!showMap)}
+            variant="outline"
+            size="sm"
+            className="border-blue-500 text-blue-500 hover:bg-blue-500/10 bg-transparent"
+          >
+            <MapPin className="w-4 h-4 mr-1" />
+            {showMap ? "Hide Map" : "Show Map"}
+          </Button>
+          <Button
+            onClick={loadAvailableDrivers}
+            variant="outline"
+            size="sm"
+            className="border-orange-500 text-orange-500 hover:bg-orange-500/10 bg-transparent"
+            disabled={isLoading}
+          >
+            {isLoading ? "Loading..." : "Refresh"}
+          </Button>
+        </div>
       </div>
 
-      {/* Map Placeholder */}
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
+      <Card className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-blue-500/20">
         <CardContent className="p-4">
-          <div className="bg-slate-800 rounded-lg h-48 flex items-center justify-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-900/20 to-blue-900/20"></div>
-            <div className="text-center z-10">
-              <MapPin className="w-12 h-12 text-orange-500 mx-auto mb-2" />
-              <p className="text-white font-semibold">Pretoria Area Map</p>
-              <p className="text-gray-400 text-sm">
-                {drivers.filter((d) => d.status === "available").length} drivers available nearby
+          <div className="flex items-center gap-3">
+            <TrendingUp className="w-5 h-5 text-blue-500" />
+            <div>
+              <h3 className="font-semibold text-white">AI-Powered Matching</h3>
+              <p className="text-sm text-gray-300">
+                Our smart algorithm considers distance, rating, vehicle compatibility, experience, and load balancing
               </p>
             </div>
-            {/* Driver location indicators */}
-            <div className="absolute top-4 left-8 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <div className="absolute top-12 right-12 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <div className="absolute bottom-8 left-16 w-3 h-3 bg-orange-500 rounded-full"></div>
-            <div className="absolute bottom-16 right-8 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-            <div className="absolute top-20 left-1/2 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Driver List */}
+      {showMap && (
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <Navigation className="w-5 h-5 text-orange-500" />
+              Pretoria Delivery Area
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <InteractiveMap deliveries={driverLocations} showRoute={false} className="h-[300px]" />
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-500">
+              {drivers.filter((d) => d.status === "available").length}
+            </div>
+            <div className="text-sm text-gray-400">Available</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-orange-500">
+              {drivers.filter((d) => d.status === "busy").length}
+            </div>
+            <div className="text-sm text-gray-400">Busy</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-500">
+              {(drivers.reduce((sum, d) => sum + d.rating, 0) / drivers.length).toFixed(1)}
+            </div>
+            <div className="text-sm text-gray-400">Avg Rating</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="space-y-3">
         {drivers.map((driver) => (
           <Card
@@ -265,6 +334,12 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <span>{driver.experience_years} years exp.</span>
                     <span>{driver.completed_deliveries} deliveries</span>
+                    {driver.status === "available" && (
+                      <div className="flex items-center gap-1 text-green-500">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Ready now</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -273,7 +348,6 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
         ))}
       </div>
 
-      {/* Selected Driver Details */}
       {selectedDriver && (
         <Card className="bg-white/10 backdrop-blur-md border-white/20">
           <CardHeader>
@@ -337,6 +411,42 @@ export function DriversSection({ user, onRequestDriver }: DriversSectionProps) {
           </CardContent>
         </Card>
       )}
+
+      {matchingCriteria && (
+        <DriverMatchingModal
+          isOpen={showMatchingModal}
+          onClose={() => setShowMatchingModal(false)}
+          criteria={matchingCriteria}
+          drivers={drivers}
+          onDriverSelected={handleDriverMatched}
+        />
+      )}
     </div>
   )
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case "available":
+      return "bg-green-500"
+    case "busy":
+      return "bg-orange-500"
+    case "offline":
+      return "bg-gray-500"
+    default:
+      return "bg-gray-500"
+  }
+}
+
+function getStatusText(status: string) {
+  switch (status) {
+    case "available":
+      return "Available"
+    case "busy":
+      return "Busy"
+    case "offline":
+      return "Offline"
+    default:
+      return "Unknown"
+  }
 }

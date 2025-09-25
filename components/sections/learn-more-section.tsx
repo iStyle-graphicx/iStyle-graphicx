@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
+import { ContactFormModal } from "@/components/contact-form-modal"
 import {
   Truck,
   Shield,
@@ -121,6 +123,8 @@ export function LearnMoreSection() {
       features: ["200kg+", "Construction materials", "Industrial equipment", "Bulk items"],
     },
   ]
+
+  const [isContactFormOpen, setIsContactFormOpen] = useState(false)
 
   return (
     <div className="px-4 pt-6 pb-16 space-y-8">
@@ -246,7 +250,7 @@ export function LearnMoreSection() {
               <Mail className="w-5 h-5 text-blue-500" />
               <div>
                 <p className="font-semibold text-white">Email Support</p>
-                <p className="text-sm text-gray-300">support@vango.co.za</p>
+                <p className="text-sm text-gray-300">info@vango.co.za</p>
               </div>
             </div>
             <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
@@ -262,7 +266,12 @@ export function LearnMoreSection() {
             <p className="text-gray-300 text-sm mb-4">
               Have questions? We're here to help you get your deliveries done right.
             </p>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2">Contact Support</Button>
+            <Button
+              onClick={() => setIsContactFormOpen(true)}
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2"
+            >
+              Contact Support
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -282,6 +291,8 @@ export function LearnMoreSection() {
           </div>
         </CardContent>
       </Card>
+
+      <ContactFormModal isOpen={isContactFormOpen} onClose={() => setIsContactFormOpen(false)} />
     </div>
   )
 }
