@@ -75,4 +75,51 @@ CREATE POLICY "user_verifications_select_own" ON public.user_verifications
 CREATE POLICY "user_verifications_insert_own" ON public.user_verifications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "user_verifications_update
+-- Completed the incomplete policy statement
+CREATE POLICY "user_verifications_update_own" ON public.user_verifications
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Add RLS policies for notification_preferences
+ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "notification_preferences_select_own" ON public.notification_preferences
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "notification_preferences_insert_own" ON public.notification_preferences
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "notification_preferences_update_own" ON public.notification_preferences
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Add RLS policies for payment_methods
+ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "payment_methods_select_own" ON public.payment_methods
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "payment_methods_insert_own" ON public.payment_methods
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "payment_methods_update_own" ON public.payment_methods
+    FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "payment_methods_delete_own" ON public.payment_methods
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Add RLS policies for billing_history
+ALTER TABLE public.billing_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "billing_history_select_own" ON public.billing_history
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- Add RLS policies for ratings
+ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "ratings_select_all" ON public.ratings
+    FOR SELECT USING (true);
+
+CREATE POLICY "ratings_insert_customer" ON public.ratings
+    FOR INSERT WITH CHECK (auth.uid() = customer_id);
+
+CREATE POLICY "ratings_update_customer" ON public.ratings
+    FOR UPDATE USING (auth.uid() = customer_id);

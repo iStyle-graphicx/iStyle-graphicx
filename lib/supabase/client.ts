@@ -1,5 +1,15 @@
 import { createBrowserClient } from "@supabase/ssr"
 
 export function createClient() {
-  return createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  console.log("[v0] Client - Supabase URL:", supabaseUrl ? "Set" : "Missing")
+  console.log("[v0] Client - Supabase Anon Key:", supabaseAnonKey ? "Set" : "Missing")
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Missing Supabase environment variables. Please check your project settings.")
+  }
+
+  return createBrowserClient(supabaseUrl, supabaseAnonKey)
 }
