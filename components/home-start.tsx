@@ -13,7 +13,10 @@ export function HomeStart({ onAuthenticated }: HomeStartProps) {
   const [showRegisterModal, setShowRegisterModal] = useState(false)
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center p-6 max-w-md mx-auto">
+    <div
+      className="min-h-screen flex flex-col items-center justify-center text-center p-6 max-w-md mx-auto"
+      data-tour="home-section"
+    >
       <div className="text-6xl font-black bg-gradient-to-r from-orange-500 to-amber-500 bg-clip-text text-transparent mb-4 animate-fade-in">
         VANGO
       </div>
@@ -23,6 +26,7 @@ export function HomeStart({ onAuthenticated }: HomeStartProps) {
         <Button
           onClick={() => setShowLoginModal(true)}
           className="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-full transition-all duration-300 hover:scale-105"
+          data-tour="login-button"
         >
           Login
         </Button>
@@ -31,6 +35,7 @@ export function HomeStart({ onAuthenticated }: HomeStartProps) {
           onClick={() => setShowRegisterModal(true)}
           variant="outline"
           className="border-orange-500 text-orange-500 hover:bg-orange-500 hover:text-white font-semibold py-3 rounded-full transition-all duration-300 hover:scale-105"
+          data-tour="register-button"
         >
           Register
         </Button>

@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, Wrench, Warehouse, Zap } from "lucide-react"
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
+import { useAuth } from "@/components/auth-provider"
 
 interface HomeSectionProps {
   onRequestDelivery: () => void
@@ -10,6 +12,12 @@ interface HomeSectionProps {
 }
 
 export function HomeSection({ onRequestDelivery, onLearnMore }: HomeSectionProps) {
+  const { user } = useAuth()
+
+  if (user) {
+    return <DashboardOverview user={user} onRequestDelivery={onRequestDelivery} />
+  }
+
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
       <div>

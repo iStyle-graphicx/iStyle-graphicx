@@ -30,13 +30,14 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
   })
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const supabase = createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
+      const supabase = createClient()
+
       if (type === "login") {
         const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
@@ -50,31 +51,14 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
             variant: "destructive",
           })
         } else if (data.user) {
-          // Fetch user profile
-          const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
-
-          const userData = {
-            id: data.user.id,
-            email: data.user.email,
-            firstName: profile?.first_name || "",
-            lastName: profile?.last_name || "",
-            phone: profile?.phone || "",
-            userType: profile?.user_type || "customer",
-            joinDate: data.user.created_at,
-            avatar_url: profile?.avatar_url || null,
-          }
-
-          localStorage.setItem("vangoUser", JSON.stringify(userData))
-
           toast({
             title: "Login successful!",
-            description: `Welcome back to Vango Delivery${profile?.user_type === "driver" ? " Driver Portal" : ""}`,
+            description: "Welcome back to Vango Delivery",
           })
           onSuccess()
           onClose()
         }
       } else {
-        // Registration
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -96,6 +80,24 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
             variant: "destructive",
           })
         } else {
+          if (data.user) {
+            try {
+              const { error: profileError } = await supabase.from("profiles").insert({
+                id: data.user.id,
+                first_name: formData.firstName,
+                last_name: formData.lastName,
+                phone: formData.phone,
+                user_type: formData.userType,
+              })
+
+              if (profileError) {
+                console.error("[v0] Profile creation error:", profileError)
+              }
+            } catch (profileError) {
+              console.error("[v0] Profile creation error:", profileError)
+            }
+          }
+
           toast({
             title: "Registration successful!",
             description: "Please check your email to confirm your account before you can start using Vango Delivery.",
@@ -107,7 +109,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
       console.error("[v0] Auth error:", error)
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       })
     } finally {

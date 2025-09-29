@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface User {
   id: string
@@ -25,7 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [supabase, setSupabase] = useState<any>(null)
+  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null)
 
   useEffect(() => {
     try {
@@ -48,113 +49,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (session?.user) {
-          // Fetch user profile from database
-          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
-
-          if (profile) {
-            const userData = {
-              id: session.user.id,
-              email: session.user.email!,
-              name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.email || "User",
-              userType: profile.user_type as "customer" | "driver",
-              joinDate: session.user.created_at,
-            }
-            setUser(userData)
-            try {
-              localStorage.setItem("vangoUser", JSON.stringify(userData))
-            } catch (storageError) {
-              console.warn("[v0] Failed to save user to localStorage:", storageError)
-            }
-          }
-        } else {
-          // Check localStorage for existing user data
-          try {
-            const userData = localStorage.getItem("vangoUser")
-            if (userData) {
-              setUser(JSON.parse(userData))
-            }
-          } catch (storageError) {
-            console.warn("[v0] Failed to read from localStorage:", storageError)
-          }
+          await loadUserProfile(session.user)
         }
       } catch (error) {
         console.error("[v0] Auth session error:", error)
-        // Fallback to localStorage
-        try {
-          const userData = localStorage.getItem("vangoUser")
-          if (userData) {
-            setUser(JSON.parse(userData))
-          }
-        } catch (storageError) {
-          console.warn("[v0] Failed to read from localStorage:", storageError)
-        }
       }
       setIsLoading(false)
     }
 
     getSession()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (event === "SIGNED_IN" && session?.user) {
-          const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+      console.log("[v0] Auth state change:", event)
 
-          if (profile) {
-            const userData = {
-              id: session.user.id,
-              email: session.user.email!,
-              name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || profile.email || "User",
-              userType: profile.user_type as "customer" | "driver",
-              joinDate: session.user.created_at,
-            }
-            setUser(userData)
-            try {
-              localStorage.setItem("vangoUser", JSON.stringify(userData))
-            } catch (storageError) {
-              console.warn("[v0] Failed to save user to localStorage:", storageError)
-            }
-          }
-        } else if (event === "SIGNED_OUT") {
-          setUser(null)
-          try {
-            localStorage.removeItem("vangoUser")
-          } catch (storageError) {
-            console.warn("[v0] Failed to remove user from localStorage:", storageError)
-          }
-        }
-      } catch (error) {
-        console.error("[v0] Auth state change error:", error)
+      if (event === "SIGNED_IN" && session?.user) {
+        await loadUserProfile(session.user)
+      } else if (event === "SIGNED_OUT") {
+        setUser(null)
       }
     })
 
     return () => subscription.unsubscribe()
   }, [supabase])
 
-  const login = (userData: User) => {
-    setUser(userData)
+  const loadUserProfile = async (supabaseUser: SupabaseUser) => {
+    if (!supabase) return
+
     try {
-      localStorage.setItem("vangoUser", JSON.stringify(userData))
-    } catch (storageError) {
-      console.warn("[v0] Failed to save user to localStorage:", storageError)
+      const { data: profile } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
+
+      if (profile) {
+        const userData: User = {
+          id: supabaseUser.id,
+          email: supabaseUser.email!,
+          name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || supabaseUser.email || "User",
+          userType: profile.user_type as "customer" | "driver",
+          joinDate: supabaseUser.created_at,
+        }
+        setUser(userData)
+      }
+    } catch (error) {
+      console.error("[v0] Error loading user profile:", error)
     }
   }
 
+  const login = (userData: User) => {
+    setUser(userData)
+  }
+
   const logout = async () => {
+    if (!supabase) return
+
     try {
-      if (supabase) {
-        await supabase.auth.signOut()
-      }
+      await supabase.auth.signOut()
+      setUser(null)
     } catch (error) {
       console.error("[v0] Logout error:", error)
-    }
-    setUser(null)
-    try {
-      localStorage.removeItem("vangoUser")
-    } catch (storageError) {
-      console.warn("[v0] Failed to remove user from localStorage:", storageError)
     }
   }
 

@@ -13,9 +13,9 @@ export function WelcomeLoader() {
           clearInterval(timer)
           return 100
         }
-        return prev + 2
+        return prev + 1
       })
-    }, 50)
+    }, 25) // Faster progress updates for smoother animation
 
     return () => clearInterval(timer)
   }, [])

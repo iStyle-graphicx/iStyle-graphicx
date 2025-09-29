@@ -26,6 +26,11 @@ import { AuthModal } from "@/components/auth-modal"
 import { NotificationProvider } from "@/hooks/use-notifications"
 import { SettingsProvider } from "@/lib/contexts/settings-context"
 import { PerformanceMonitor } from "@/lib/performance"
+import { MobileOptimizations } from "@/components/mobile/mobile-optimizations"
+import { SwipeGestures } from "@/components/mobile/swipe-gestures"
+import { PullToRefresh } from "@/components/mobile/pull-to-refresh"
+import { useHapticFeedback } from "@/components/mobile/haptic-feedback"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface MainAppProps {
   onLogout: () => void
@@ -39,8 +44,11 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [authType, setAuthType] = useState<"login" | "register">("register")
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   const performanceMonitor = PerformanceMonitor.getInstance()
+  const haptic = useHapticFeedback()
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     performanceMonitor.startTiming("app-initialization")
@@ -91,8 +99,38 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   const handleSectionChange = (section: string) => {
     performanceMonitor.startTiming(`section-change-${section}`)
+    if (isMobile) {
+      haptic.light()
+    }
     setCurrentSection(section)
-    // End timing will be handled by the section component
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    haptic.medium()
+
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    setIsRefreshing(false)
+    haptic.success()
+  }
+
+  const handleSwipeLeft = () => {
+    if (isMenuOpen) return
+
+    const sections = ["homeSection", "trackDeliverySection", "driversSection", "profileSection"]
+    const currentIndex = sections.indexOf(currentSection)
+    const nextIndex = (currentIndex + 1) % sections.length
+    handleSectionChange(sections[nextIndex])
+  }
+
+  const handleSwipeRight = () => {
+    if (isMenuOpen) return
+
+    const sections = ["homeSection", "trackDeliverySection", "driversSection", "profileSection"]
+    const currentIndex = sections.indexOf(currentSection)
+    const prevIndex = currentIndex === 0 ? sections.length - 1 : currentIndex - 1
+    handleSectionChange(sections[prevIndex])
   }
 
   const renderCurrentSection = () => {
@@ -211,53 +249,59 @@ export function MainApp({ onLogout }: MainAppProps) {
   return (
     <SettingsProvider userId={currentUser?.id}>
       <NotificationProvider userId={currentUser?.id}>
-        <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
-          <ErrorBoundary>
-            <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
-          </ErrorBoundary>
+        <MobileOptimizations>
+          <div className="max-w-md mx-auto min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 text-white relative">
+            <ErrorBoundary>
+              <Header onMenuToggle={() => setIsMenuOpen(true)} user={currentUser} />
+            </ErrorBoundary>
 
-          <ErrorBoundary>
-            <SideMenu
-              isOpen={isMenuOpen}
-              onClose={() => setIsMenuOpen(false)}
-              currentSection={currentSection}
-              onNavigate={handleSectionChange}
-              user={currentUser}
-              onLogout={handleLogout}
-            />
-          </ErrorBoundary>
+            <ErrorBoundary>
+              <SideMenu
+                isOpen={isMenuOpen}
+                onClose={() => setIsMenuOpen(false)}
+                currentSection={currentSection}
+                onNavigate={handleSectionChange}
+                user={currentUser}
+                onLogout={handleLogout}
+              />
+            </ErrorBoundary>
 
-          <main className="pb-20 pt-4">{renderCurrentSection()}</main>
+            <SwipeGestures onSwipeLeft={handleSwipeLeft} onSwipeRight={handleSwipeRight} className="flex-1">
+              <PullToRefresh onRefresh={handleRefresh}>
+                <main className="pb-20 pt-4">{renderCurrentSection()}</main>
+              </PullToRefresh>
+            </SwipeGestures>
 
-          <ErrorBoundary>
-            <BottomNav
-              currentSection={currentSection}
-              onNavigate={handleSectionChange}
-              onRequestDelivery={() => setShowRequestModal(true)}
-            />
-          </ErrorBoundary>
+            <ErrorBoundary>
+              <BottomNav
+                currentSection={currentSection}
+                onNavigate={handleSectionChange}
+                onRequestDelivery={() => setShowRequestModal(true)}
+              />
+            </ErrorBoundary>
 
-          <ErrorBoundary>
-            <RequestDeliveryModal
-              isOpen={showRequestModal}
-              onClose={() => setShowRequestModal(false)}
-              onShowAuth={handleShowAuth}
-            />
-          </ErrorBoundary>
+            <ErrorBoundary>
+              <RequestDeliveryModal
+                isOpen={showRequestModal}
+                onClose={() => setShowRequestModal(false)}
+                onShowAuth={handleShowAuth}
+              />
+            </ErrorBoundary>
 
-          <ErrorBoundary>
-            <AuthModal
-              type={authType}
-              isOpen={showAuthModal}
-              onClose={() => setShowAuthModal(false)}
-              onSuccess={handleAuthSuccess}
-              onSwitchToRegister={() => setAuthType("register")}
-              onSwitchToLogin={() => setAuthType("login")}
-            />
-          </ErrorBoundary>
+            <ErrorBoundary>
+              <AuthModal
+                type={authType}
+                isOpen={showAuthModal}
+                onClose={() => setShowAuthModal(false)}
+                onSuccess={handleAuthSuccess}
+                onSwitchToRegister={() => setAuthType("register")}
+                onSwitchToLogin={() => setAuthType("login")}
+              />
+            </ErrorBoundary>
 
-          {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
-        </div>
+            {isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsMenuOpen(false)} />}
+          </div>
+        </MobileOptimizations>
       </NotificationProvider>
     </SettingsProvider>
   )

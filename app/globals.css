@@ -130,6 +130,241 @@
   --sidebar-ring: oklch(0.646 0.222 41.116); /* Vango Orange */
 }
 
+/* High contrast mode */
+.high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #1a1a1a;
+  --card-foreground: #ffffff;
+  --primary: #ffaa00;
+  --primary-foreground: #000000;
+  --secondary: #333333;
+  --secondary-foreground: #ffffff;
+  --muted: #2a2a2a;
+  --muted-foreground: #cccccc;
+  --accent: #444444;
+  --accent-foreground: #ffffff;
+  --border: #555555;
+  --input: #2a2a2a;
+  --ring: #ffaa00;
+}
+
+.high-contrast * {
+  border-color: var(--border) !important;
+}
+
+.high-contrast button,
+.high-contrast a,
+.high-contrast [role="button"] {
+  border: 2px solid var(--border) !important;
+}
+
+/* Large text mode */
+.large-text {
+  font-size: 18px;
+}
+
+.large-text h1 {
+  font-size: 2.5rem;
+}
+
+.large-text h2 {
+  font-size: 2rem;
+}
+
+.large-text h3 {
+  font-size: 1.75rem;
+}
+
+.large-text .text-sm {
+  font-size: 1rem;
+}
+
+.large-text .text-xs {
+  font-size: 0.875rem;
+}
+
+/* Reduced motion */
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Enhanced focus indicators */
+.focus-visible *:focus {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.focus-visible button:focus,
+.focus-visible a:focus,
+.focus-visible [role="button"]:focus {
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+/* Skip links */
+.skip-links a {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.skip-links a:focus {
+  top: 6px;
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Focus trap */
+.focus-trap-active {
+  isolation: isolate;
+}
+
+/* Keyboard navigation indicators */
+[role="button"]:focus,
+[role="menuitem"]:focus,
+[role="tab"]:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* ARIA live regions */
+[aria-live] {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* High contrast images */
+.high-contrast img {
+  filter: contrast(1.2) brightness(1.1);
+}
+
+/* Touch target size for accessibility */
+@media (max-width: 768px) {
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  [tabindex]:not([tabindex="-1"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Color contrast improvements */
+.high-contrast .text-gray-400 {
+  color: #cccccc !important;
+}
+
+.high-contrast .text-gray-300 {
+  color: #dddddd !important;
+}
+
+.high-contrast .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.high-contrast .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Ensure sufficient color contrast */
+.high-contrast .text-orange-500 {
+  color: #ffaa00 !important;
+}
+
+.high-contrast .bg-orange-500 {
+  background-color: #ffaa00 !important;
+  color: #000000 !important;
+}
+
+/* Focus management for modals */
+[role="dialog"] {
+  isolation: isolate;
+}
+
+[role="dialog"]:focus {
+  outline: none;
+}
+
+/* Keyboard navigation for custom components */
+[role="tablist"] [role="tab"] {
+  cursor: pointer;
+}
+
+[role="tablist"] [role="tab"]:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+[role="tablist"] [role="tab"][aria-selected="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* Menu navigation */
+[role="menu"] {
+  outline: none;
+}
+
+[role="menuitem"] {
+  cursor: pointer;
+}
+
+[role="menuitem"]:hover,
+[role="menuitem"]:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* List navigation */
+[role="listbox"] [role="option"]:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+[role="listbox"] [role="option"][aria-selected="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -275,7 +510,7 @@
   transform: translateY(-2px);
 }
 
-/* Mobile-first responsive design */
+/* Mobile-first responsive design with enhanced touch support */
 @media (max-width: 480px) {
   .container {
     padding-left: 1rem;
@@ -285,6 +520,54 @@
   .vango-glass-card {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Enhanced touch targets for mobile */
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent zoom on form inputs */
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+
+  /* Optimize scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Improve tap highlighting */
+  * {
+    -webkit-tap-highlight-color: rgba(249, 115, 22, 0.2);
+  }
+}
+
+/* PWA and mobile app optimizations */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Landscape mode optimizations */
+@media (orientation: landscape) and (max-height: 500px) {
+  .bottom-nav {
+    padding: 0.25rem 0;
+  }
+
+  .header {
+    padding: 0.5rem 1rem;
   }
 }
 
@@ -303,4 +586,25 @@
   100% {
     transform: rotate(360deg);
   }
+}
+
+/* Enhanced mobile interactions */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Active states for better mobile feedback */
+.active-scale {
+  transition: transform 0.1s ease;
+}
+
+.active-scale:active {
+  transform: scale(0.95);
 }
