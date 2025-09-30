@@ -31,6 +31,8 @@ import { SwipeGestures } from "@/components/mobile/swipe-gestures"
 import { PullToRefresh } from "@/components/mobile/pull-to-refresh"
 import { useHapticFeedback } from "@/components/mobile/haptic-feedback"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { EmailVerificationBanner } from "@/components/email-verification-banner"
+import { useAuth } from "@/components/auth-provider"
 
 interface MainAppProps {
   onLogout: () => void
@@ -49,6 +51,7 @@ export function MainApp({ onLogout }: MainAppProps) {
   const performanceMonitor = PerformanceMonitor.getInstance()
   const haptic = useHapticFeedback()
   const isMobile = useIsMobile()
+  const { needsEmailVerification } = useAuth()
 
   useEffect(() => {
     performanceMonitor.startTiming("app-initialization")
@@ -268,7 +271,14 @@ export function MainApp({ onLogout }: MainAppProps) {
 
             <SwipeGestures onSwipeLeft={handleSwipeLeft} onSwipeRight={handleSwipeRight} className="flex-1">
               <PullToRefresh onRefresh={handleRefresh}>
-                <main className="pb-20 pt-4">{renderCurrentSection()}</main>
+                <main className="pb-20 pt-4">
+                  {needsEmailVerification && (
+                    <div className="px-4">
+                      <EmailVerificationBanner />
+                    </div>
+                  )}
+                  {renderCurrentSection()}
+                </main>
               </PullToRefresh>
             </SwipeGestures>
 

@@ -10,6 +10,7 @@ interface User {
   email: string
   userType: "customer" | "driver"
   joinDate: string
+  emailVerified: boolean
   recentDeliveries?: string[]
 }
 
@@ -19,6 +20,7 @@ interface AuthContextType {
   logout: () => void
   isAuthenticated: boolean
   isLoading: boolean
+  needsEmailVerification: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -26,6 +28,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [needsEmailVerification, setNeedsEmailVerification] = useState(false)
   const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null)
 
   useEffect(() => {
@@ -49,6 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (session?.user) {
+          if (!session.user.email_confirmed_at) {
+            setNeedsEmailVerification(true)
+          }
           await loadUserProfile(session.user)
         }
       } catch (error) {
@@ -65,9 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[v0] Auth state change:", event)
 
       if (event === "SIGNED_IN" && session?.user) {
+        if (!session.user.email_confirmed_at) {
+          setNeedsEmailVerification(true)
+        } else {
+          setNeedsEmailVerification(false)
+        }
         await loadUserProfile(session.user)
       } else if (event === "SIGNED_OUT") {
         setUser(null)
+        setNeedsEmailVerification(false)
+      } else if (event === "USER_UPDATED" && session?.user) {
+        if (session.user.email_confirmed_at) {
+          setNeedsEmailVerification(false)
+        }
+        await loadUserProfile(session.user)
       }
     })
 
@@ -78,21 +95,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return
 
     try {
-      const { data: profile } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
+      const isNewUser = new Date(supabaseUser.created_at).getTime() > Date.now() - 5000
+      if (isNewUser) {
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+      }
+
+      const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
+
+      if (error) {
+        console.error("[v0] Error loading user profile:", error)
+        if (error.code === "PGRST116") {
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+          const { data: retryProfile } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
+
+          if (retryProfile) {
+            setUserData(supabaseUser, retryProfile)
+          }
+        }
+        return
+      }
 
       if (profile) {
-        const userData: User = {
-          id: supabaseUser.id,
-          email: supabaseUser.email!,
-          name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || supabaseUser.email || "User",
-          userType: profile.user_type as "customer" | "driver",
-          joinDate: supabaseUser.created_at,
-        }
-        setUser(userData)
+        setUserData(supabaseUser, profile)
       }
     } catch (error) {
       console.error("[v0] Error loading user profile:", error)
     }
+  }
+
+  const setUserData = (supabaseUser: SupabaseUser, profile: any) => {
+    const userData: User = {
+      id: supabaseUser.id,
+      email: supabaseUser.email!,
+      name: `${profile.first_name || ""} ${profile.last_name || ""}`.trim() || supabaseUser.email || "User",
+      userType: profile.user_type as "customer" | "driver",
+      joinDate: supabaseUser.created_at,
+      emailVerified: !!supabaseUser.email_confirmed_at,
+    }
+    setUser(userData)
   }
 
   const login = (userData: User) => {
@@ -105,6 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await supabase.auth.signOut()
       setUser(null)
+      setNeedsEmailVerification(false)
     } catch (error) {
       console.error("[v0] Logout error:", error)
     }
@@ -118,6 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         isAuthenticated: !!user,
         isLoading,
+        needsEmailVerification,
       }}
     >
       {children}

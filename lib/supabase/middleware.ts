@@ -9,9 +9,6 @@ export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  console.log("[v0] Supabase URL:", supabaseUrl ? "Set" : "Missing")
-  console.log("[v0] Supabase Anon Key:", supabaseAnonKey ? "Set" : "Missing")
-
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("[v0] Missing Supabase environment variables")
     return supabaseResponse
@@ -44,17 +41,8 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = "/auth/login"
-    return NextResponse.redirect(url)
-  }
+  // The app handles authentication through modals on the main page
+  // Only protect specific routes if needed in the future
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
   // If you're creating a new response object with NextResponse.next() make sure to:
