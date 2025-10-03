@@ -20,16 +20,12 @@ function AppContent() {
 
   useEffect(() => {
     if (!authLoading) {
-      const timer = setTimeout(() => {
-        setIsLoading(false)
-
-        // Check if user has seen onboarding
-        const hasSeenOnboarding = localStorage.getItem("vangoOnboardingComplete")
-        if (!hasSeenOnboarding) {
-          setShowOnboarding(true)
-        }
-      }, 2500)
-      return () => clearTimeout(timer)
+      // Check if user has seen onboarding
+      const hasSeenOnboarding = localStorage.getItem("vangoOnboardingComplete")
+      if (!hasSeenOnboarding) {
+        setShowOnboarding(true)
+      }
+      setIsLoading(false)
     }
   }, [authLoading])
 
@@ -102,7 +98,11 @@ function AppContent() {
     },
   ]
 
-  if (isLoading || authLoading) {
+  if (authLoading) {
+    return <WelcomeLoader />
+  }
+
+  if (isLoading) {
     return <WelcomeLoader />
   }
 

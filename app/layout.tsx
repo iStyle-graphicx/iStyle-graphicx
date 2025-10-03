@@ -1,7 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
-import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { OfflineIndicator } from "@/components/offline-indicator"
@@ -80,7 +79,6 @@ export default function RootLayout({
 
         {/* DNS prefetch for external resources */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="//vercel.live" />
       </head>
       <body className="font-sans">
         <ErrorBoundary>
@@ -88,7 +86,6 @@ export default function RootLayout({
           <OfflineIndicator />
           <Toaster />
         </ErrorBoundary>
-        <Analytics />
       </body>
     </html>
   )

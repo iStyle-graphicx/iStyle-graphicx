@@ -57,8 +57,8 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
     activeDeliveries: 0,
     completedDeliveries: 0,
     totalSpent: 0,
-    averageRating: 4.8,
-    onTimeRate: 95,
+    averageRating: 0,
+    onTimeRate: 0,
   })
   const [activeDeliveries, setActiveDeliveries] = useState<ActiveDelivery[]>([])
   const [recentActivity, setRecentActivity] = useState<any[]>([])
@@ -101,13 +101,28 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       const completed = deliveries?.filter((d) => d.status === "delivered").length || 0
       const totalSpent = deliveries?.reduce((sum, d) => sum + (d.delivery_fee || 0), 0) || 0
 
+      const deliveriesWithRatings = deliveries?.filter((d) => d.customer_rating && d.status === "delivered") || []
+      const avgRating =
+        deliveriesWithRatings.length > 0
+          ? deliveriesWithRatings.reduce((sum, d) => sum + d.customer_rating, 0) / deliveriesWithRatings.length
+          : 0
+
+      const completedWithTiming = deliveries?.filter((d) => d.status === "delivered" && d.delivered_at) || []
+      const onTimeDeliveries =
+        completedWithTiming.filter((d) => {
+          const estimatedTime = new Date(d.estimated_delivery).getTime()
+          const actualTime = new Date(d.delivered_at).getTime()
+          return actualTime <= estimatedTime
+        }).length || 0
+      const onTimeRate = completedWithTiming.length > 0 ? (onTimeDeliveries / completedWithTiming.length) * 100 : 0
+
       setStats({
         totalDeliveries: total,
         activeDeliveries: active,
         completedDeliveries: completed,
         totalSpent,
-        averageRating: 4.8,
-        onTimeRate: 95,
+        averageRating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
+        onTimeRate: Math.round(onTimeRate),
       })
 
       // Set active deliveries
@@ -271,36 +286,53 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       </div>
 
       {/* Performance Indicators */}
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-orange-500" />
-            Performance Overview
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-300">On-Time Delivery Rate</span>
-              <span className="text-sm font-semibold text-white">{stats.onTimeRate}%</span>
-            </div>
-            <Progress value={stats.onTimeRate} className="h-2" />
-          </div>
+      {stats.completedDeliveries > 0 && (
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-white flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-orange-500" />
+              Performance Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {stats.onTimeRate > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-300">On-Time Delivery Rate</span>
+                  <span className="text-sm font-semibold text-white">{stats.onTimeRate}%</span>
+                </div>
+                <Progress value={stats.onTimeRate} className="h-2" />
+              </div>
+            )}
 
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-300">Completion Rate</span>
-              <span className="text-sm font-semibold text-white">
-                {stats.totalDeliveries > 0 ? Math.round((stats.completedDeliveries / stats.totalDeliveries) * 100) : 0}%
-              </span>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-300">Completion Rate</span>
+                <span className="text-sm font-semibold text-white">
+                  {stats.totalDeliveries > 0
+                    ? Math.round((stats.completedDeliveries / stats.totalDeliveries) * 100)
+                    : 0}
+                  %
+                </span>
+              </div>
+              <Progress
+                value={stats.totalDeliveries > 0 ? (stats.completedDeliveries / stats.totalDeliveries) * 100 : 0}
+                className="h-2"
+              />
             </div>
-            <Progress
-              value={stats.totalDeliveries > 0 ? (stats.completedDeliveries / stats.totalDeliveries) * 100 : 0}
-              className="h-2"
-            />
-          </div>
-        </CardContent>
-      </Card>
+
+            {stats.averageRating > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                <span className="text-sm text-gray-300">Your Average Rating</span>
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                  <span className="text-sm font-semibold text-white">{stats.averageRating}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Active Deliveries */}
       {activeDeliveries.length > 0 && (

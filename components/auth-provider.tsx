@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface User {
@@ -29,27 +29,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [needsEmailVerification, setNeedsEmailVerification] = useState(false)
-  const [supabase, setSupabase] = useState<ReturnType<typeof createClient> | null>(null)
 
   useEffect(() => {
+    // Check if Supabase is configured
+    if (!isSupabaseConfigured()) {
+      console.warn("[v0] Supabase is not configured. Auth features will be limited.")
+      setIsLoading(false)
+      return
+    }
+
+    let supabase: ReturnType<typeof createClient> | null = null
+
     try {
-      const client = createClient()
-      setSupabase(client)
+      supabase = createClient()
     } catch (error) {
       console.error("[v0] Failed to create Supabase client:", error)
       setIsLoading(false)
       return
     }
-  }, [])
-
-  useEffect(() => {
-    if (!supabase) return
 
     const getSession = async () => {
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession()
+        } = await supabase!.auth.getSession()
 
         if (session?.user) {
           if (!session.user.email_confirmed_at) {
@@ -59,8 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error("[v0] Auth session error:", error)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
 
     getSession()
@@ -89,12 +93,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [])
 
   const loadUserProfile = async (supabaseUser: SupabaseUser) => {
-    if (!supabase) return
-
     try {
+      const supabase = createClient()
       const isNewUser = new Date(supabaseUser.created_at).getTime() > Date.now() - 5000
       if (isNewUser) {
         await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -140,10 +143,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = async () => {
-    if (!supabase) return
-
     try {
-      await supabase.auth.signOut()
+      if (isSupabaseConfigured()) {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      }
       setUser(null)
       setNeedsEmailVerification(false)
     } catch (error) {

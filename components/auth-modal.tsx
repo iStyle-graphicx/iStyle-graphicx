@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Eye, EyeOff } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
 
 interface AuthModalProps {
   type: "login" | "register"
@@ -129,7 +129,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
         if (data.user) {
           toast({
             title: "Login successful!",
-            description: "Welcome back to Vango Delivery",
+            description: "Welcome back to VanGo Delivery",
           })
           onSuccess()
           onClose()
@@ -163,8 +163,6 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           })
           return
         }
-
-        // The trigger in 001_create_database_schema.sql creates the profile when a new user signs up
 
         toast({
           title: "Registration successful!",
@@ -227,6 +225,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                 className="bg-slate-700 border-slate-600 text-white"
                 placeholder="your.email@example.com"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -236,6 +235,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                 variant="outline"
                 onClick={() => setShowForgotPassword(false)}
                 className="flex-1 border-slate-600 text-white hover:bg-slate-700"
+                disabled={isLoading}
               >
                 Back
               </Button>
@@ -244,7 +244,14 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
                 disabled={isLoading}
               >
-                {isLoading ? "Sending..." : "Send Reset Link"}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  "Send Reset Link"
+                )}
               </Button>
             </div>
           </form>
@@ -258,10 +265,10 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
       <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
         <DialogHeader>
           <div className="flex items-center justify-center mb-4">
-            <img src="/images/vango-logo-new.svg" alt="Vango Delivery" className="h-8" />
+            <img src="/images/vango-logo-new.svg" alt="VanGo Delivery" className="h-8" />
           </div>
           <DialogTitle className="text-2xl font-bold text-center text-white">
-            {type === "login" ? "Login to Vango" : "Join Vango Delivery"}
+            {type === "login" ? "Login to VanGo" : "Join VanGo Delivery"}
           </DialogTitle>
         </DialogHeader>
 
@@ -288,6 +295,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                     className="bg-slate-700 border-slate-600 text-white"
                     placeholder="First name"
                     required
+                    disabled={isLoading}
                   />
                 </div>
                 <div>
@@ -302,6 +310,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                     className="bg-slate-700 border-slate-600 text-white"
                     placeholder="Last name"
                     required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -318,6 +327,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                   className="bg-slate-700 border-slate-600 text-white"
                   placeholder="+27 123 456 789"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </>
@@ -338,6 +348,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
               className="bg-slate-700 border-slate-600 text-white"
               placeholder="your.email@example.com"
               required
+              disabled={isLoading}
             />
           </div>
 
@@ -358,11 +369,13 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                 placeholder={type === "login" ? "Your password" : "Create a secure password (min 8 characters)"}
                 required
                 minLength={type === "register" ? 8 : 6}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -397,6 +410,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
                 type="button"
                 onClick={() => setShowForgotPassword(true)}
                 className="text-xs text-orange-500 hover:underline mt-1 block"
+                disabled={isLoading}
               >
                 Forgot password?
               </button>
@@ -411,6 +425,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
               <Select
                 value={formData.userType}
                 onValueChange={(value) => setFormData({ ...formData, userType: value })}
+                disabled={isLoading}
               >
                 <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
                   <SelectValue />
@@ -433,7 +448,14 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3"
             disabled={isLoading || (type === "register" && passwordStrength && passwordStrength.strength < 2)}
           >
-            {isLoading ? "Please wait..." : type === "login" ? "Login" : "Create Account"}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                {type === "login" ? "Logging in..." : "Creating account..."}
+              </>
+            ) : (
+              <>{type === "login" ? "Login" : "Create Account"}</>
+            )}
           </Button>
         </form>
 
@@ -442,6 +464,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           <button
             onClick={type === "login" ? onSwitchToRegister : onSwitchToLogin}
             className="text-orange-500 font-semibold hover:underline"
+            disabled={isLoading}
           >
             {type === "login" ? "Register" : "Login"}
           </button>
