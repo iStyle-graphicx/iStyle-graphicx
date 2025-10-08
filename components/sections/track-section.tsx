@@ -7,8 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { EnhancedDeliveryTracking } from "@/components/enhanced-delivery-tracking"
-import { Package, MapPin, Search, Loader2 } from "lucide-react"
+import { Package, MapPin } from "lucide-react"
 
 interface TrackSectionProps {
   user: any
@@ -30,7 +29,6 @@ export function TrackSection({ user }: TrackSectionProps) {
   const [trackingCode, setTrackingCode] = useState("")
   const [recentDeliveries, setRecentDeliveries] = useState<Delivery[]>([])
   const [trackedDelivery, setTrackedDelivery] = useState<Delivery | null>(null)
-  const [showEnhancedTracking, setShowEnhancedTracking] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
@@ -78,21 +76,15 @@ export function TrackSection({ user }: TrackSectionProps) {
   }, [user])
 
   const fetchRecentDeliveries = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("deliveries")
-        .select("*")
-        .eq("customer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(10)
+    const { data, error } = await supabase
+      .from("deliveries")
+      .select("*")
+      .eq("customer_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(10)
 
-      if (error) throw error
-
-      if (data) {
-        setRecentDeliveries(data)
-      }
-    } catch (error) {
-      console.error("[v0] Error fetching deliveries:", error)
+    if (data) {
+      setRecentDeliveries(data)
     }
   }
 
@@ -113,9 +105,6 @@ export function TrackSection({ user }: TrackSectionProps) {
 
     if (sampleDelivery) {
       setTrackedDelivery(sampleDelivery)
-      if (sampleDelivery.status === "in_transit" || sampleDelivery.status === "pending") {
-        setShowEnhancedTracking(true)
-      }
       toast({
         title: "Delivery Found",
         description: `Status: ${sampleDelivery.status.replace("_", " ").toUpperCase()}`,
@@ -131,9 +120,6 @@ export function TrackSection({ user }: TrackSectionProps) {
 
         if (data) {
           setTrackedDelivery(data)
-          if (data.status === "in_transit" || data.status === "pending") {
-            setShowEnhancedTracking(true)
-          }
           toast({
             title: "Delivery Found",
             description: `Status: ${data.status.replace("_", " ").toUpperCase()}`,
@@ -187,43 +173,21 @@ export function TrackSection({ user }: TrackSectionProps) {
     }
   }
 
-  if (showEnhancedTracking && trackedDelivery) {
-    return (
-      <div className="px-4 pt-6 pb-16 space-y-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold text-white">Live Tracking</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEnhancedTracking(false)}
-            className="border-slate-600 text-white hover:bg-slate-700"
-          >
-            Back to List
-          </Button>
-        </div>
-        <EnhancedDeliveryTracking deliveryId={trackedDelivery.id} />
-      </div>
-    )
-  }
-
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
       <h2 className="text-2xl font-bold text-white">Track Delivery</h2>
 
       {/* Tracking Input */}
-      <Card className="bg-slate-800/50 border-slate-700">
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-            <Search className="w-5 h-5 text-orange-500" />
-            Enter Tracking Code
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold text-white">Enter Tracking Code</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
             <Input
               value={trackingCode}
               onChange={(e) => setTrackingCode(e.target.value)}
-              placeholder="e.g., VAN123456"
+              placeholder="Enter tracking code"
               className="bg-slate-700 border-slate-600 text-white flex-1"
               onKeyPress={(e) => e.key === "Enter" && handleTrackDelivery()}
             />
@@ -232,26 +196,18 @@ export function TrackSection({ user }: TrackSectionProps) {
               disabled={isLoading}
               className="bg-orange-500 hover:bg-orange-600 text-white px-6"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Tracking...
-                </>
-              ) : (
-                "Track"
-              )}
+              {isLoading ? "Tracking..." : "Track"}
             </Button>
           </div>
-          <p className="text-xs text-gray-400">Enter your tracking code to see real-time delivery updates</p>
         </CardContent>
       </Card>
 
       {/* Tracked Delivery Details */}
-      {trackedDelivery && !showEnhancedTracking && (
-        <Card className="bg-slate-800/50 border-slate-700">
+      {trackedDelivery && (
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
           <CardHeader>
             <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-              <Package className="w-5 h-5 text-orange-500" />
+              <Package className="w-5 h-5" />
               Delivery Details
             </CardTitle>
           </CardHeader>
@@ -294,20 +250,12 @@ export function TrackSection({ user }: TrackSectionProps) {
                 <span className="text-white">{new Date(trackedDelivery.estimated_delivery).toLocaleString()}</span>
               </div>
             )}
-            {(trackedDelivery.status === "in_transit" || trackedDelivery.status === "pending") && (
-              <Button
-                onClick={() => setShowEnhancedTracking(true)}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white"
-              >
-                View Live Tracking
-              </Button>
-            )}
           </CardContent>
         </Card>
       )}
 
       {/* Recent Deliveries */}
-      <Card className="bg-slate-800/50 border-slate-700">
+      <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white">Recent Deliveries</CardTitle>
         </CardHeader>
@@ -316,13 +264,8 @@ export function TrackSection({ user }: TrackSectionProps) {
             recentDeliveries.map((delivery) => (
               <div
                 key={delivery.id}
-                className="bg-slate-700/50 border border-slate-600 rounded-lg p-4 cursor-pointer hover:bg-slate-700 transition-colors"
-                onClick={() => {
-                  setTrackedDelivery(delivery)
-                  if (delivery.status === "in_transit" || delivery.status === "pending") {
-                    setShowEnhancedTracking(true)
-                  }
-                }}
+                className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-colors"
+                onClick={() => setTrackedDelivery(delivery)}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
