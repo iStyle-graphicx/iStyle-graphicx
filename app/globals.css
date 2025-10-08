@@ -1,13 +1,82 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-jetbrains-mono);
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
 
-  /* Updated color system to use Vango brand colors */
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -44,325 +113,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-
-  /* Vango Brand Colors */
-  --vango-orange-50: #fff7ed;
-  --vango-orange-100: #ffedd5;
-  --vango-orange-200: #fed7aa;
-  --vango-orange-300: #fdba74;
-  --vango-orange-400: #fb923c;
-  --vango-orange-500: #f97316;
-  --vango-orange-600: #ea580c;
-  --vango-orange-700: #c2410c;
-  --vango-orange-800: #9a3412;
-  --vango-orange-900: #7c2d12;
-}
-
-:root {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  /* Updated primary color to Vango orange */
-  --primary: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.646 0.222 41.116); /* Vango Orange */
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.646 0.222 41.116); /* Vango Orange */
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.646 0.222 41.116); /* Vango Orange */
-}
-
-/* High contrast mode */
-.high-contrast {
-  --background: #000000;
-  --foreground: #ffffff;
-  --card: #1a1a1a;
-  --card-foreground: #ffffff;
-  --primary: #ffaa00;
-  --primary-foreground: #000000;
-  --secondary: #333333;
-  --secondary-foreground: #ffffff;
-  --muted: #2a2a2a;
-  --muted-foreground: #cccccc;
-  --accent: #444444;
-  --accent-foreground: #ffffff;
-  --border: #555555;
-  --input: #2a2a2a;
-  --ring: #ffaa00;
-}
-
-.high-contrast * {
-  border-color: var(--border) !important;
-}
-
-.high-contrast button,
-.high-contrast a,
-.high-contrast [role="button"] {
-  border: 2px solid var(--border) !important;
-}
-
-/* Large text mode */
-.large-text {
-  font-size: 18px;
-}
-
-.large-text h1 {
-  font-size: 2.5rem;
-}
-
-.large-text h2 {
-  font-size: 2rem;
-}
-
-.large-text h3 {
-  font-size: 1.75rem;
-}
-
-.large-text .text-sm {
-  font-size: 1rem;
-}
-
-.large-text .text-xs {
-  font-size: 0.875rem;
-}
-
-/* Reduced motion */
-.reduced-motion *,
-.reduced-motion *::before,
-.reduced-motion *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-  scroll-behavior: auto !important;
-}
-
-/* Enhanced focus indicators */
-.focus-visible *:focus {
-  outline: 3px solid var(--ring);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.focus-visible button:focus,
-.focus-visible a:focus,
-.focus-visible [role="button"]:focus {
-  box-shadow: 0 0 0 3px var(--ring);
-}
-
-/* Skip links */
-.skip-links a {
-  position: absolute;
-  top: -40px;
-  left: 6px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  padding: 8px;
-  text-decoration: none;
-  border-radius: 4px;
-  z-index: 1000;
-}
-
-.skip-links a:focus {
-  top: 6px;
-}
-
-/* Screen reader only content */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-.sr-only:focus {
-  position: static;
-  width: auto;
-  height: auto;
-  padding: inherit;
-  margin: inherit;
-  overflow: visible;
-  clip: auto;
-  white-space: normal;
-}
-
-/* Focus trap */
-.focus-trap-active {
-  isolation: isolate;
-}
-
-/* Keyboard navigation indicators */
-[role="button"]:focus,
-[role="menuitem"]:focus,
-[role="tab"]:focus {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-/* ARIA live regions */
-[aria-live] {
-  position: absolute;
-  left: -10000px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
-/* High contrast images */
-.high-contrast img {
-  filter: contrast(1.2) brightness(1.1);
-}
-
-/* Touch target size for accessibility */
-@media (max-width: 768px) {
-  button,
-  a,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"],
-  [tabindex]:not([tabindex="-1"]) {
-    min-height: 44px;
-    min-width: 44px;
-  }
-}
-
-/* Color contrast improvements */
-.high-contrast .text-gray-400 {
-  color: #cccccc !important;
-}
-
-.high-contrast .text-gray-300 {
-  color: #dddddd !important;
-}
-
-.high-contrast .border-white\/10 {
-  border-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-.high-contrast .bg-white\/10 {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-}
-
-/* Ensure sufficient color contrast */
-.high-contrast .text-orange-500 {
-  color: #ffaa00 !important;
-}
-
-.high-contrast .bg-orange-500 {
-  background-color: #ffaa00 !important;
-  color: #000000 !important;
-}
-
-/* Focus management for modals */
-[role="dialog"] {
-  isolation: isolate;
-}
-
-[role="dialog"]:focus {
-  outline: none;
-}
-
-/* Keyboard navigation for custom components */
-[role="tablist"] [role="tab"] {
-  cursor: pointer;
-}
-
-[role="tablist"] [role="tab"]:focus {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-
-[role="tablist"] [role="tab"][aria-selected="true"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-}
-
-/* Menu navigation */
-[role="menu"] {
-  outline: none;
-}
-
-[role="menuitem"] {
-  cursor: pointer;
-}
-
-[role="menuitem"]:hover,
-[role="menuitem"]:focus {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-/* List navigation */
-[role="listbox"] [role="option"]:focus {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
-}
-
-[role="listbox"] [role="option"][aria-selected="true"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
 }
 
 @layer base {
@@ -371,240 +121,5 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Added Vango-specific background gradient */
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
-    min-height: 100vh;
   }
-}
-
-/* Enhanced VanGo-specific styles and animations */
-@keyframes vango-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes vango-slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes vango-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-@keyframes vango-bounce {
-  0%,
-  20%,
-  53%,
-  80%,
-  100% {
-    transform: translate3d(0, 0, 0);
-  }
-  40%,
-  43% {
-    transform: translate3d(0, -8px, 0);
-  }
-  70% {
-    transform: translate3d(0, -4px, 0);
-  }
-  90% {
-    transform: translate3d(0, -2px, 0);
-  }
-}
-
-.animate-vango-fade-in {
-  animation: vango-fade-in 0.8s ease-out forwards;
-}
-
-.animate-vango-slide-in {
-  animation: vango-slide-in 0.6s ease-out forwards;
-}
-
-.animate-vango-pulse {
-  animation: vango-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-vango-bounce {
-  animation: vango-bounce 1s infinite;
-}
-
-/* Enhanced glass morphism effects with Vango branding */
-.vango-glass-card {
-  background: rgba(249, 115, 22, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  box-shadow: 0 8px 32px rgba(249, 115, 22, 0.1);
-}
-
-.vango-glass-dark {
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-}
-
-/* Vango-branded scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.5);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, #f97316, #ea580c);
-  border-radius: 4px;
-  border: 1px solid rgba(249, 115, 22, 0.3);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, #ea580c, #c2410c);
-}
-
-/* Vango button styles */
-.vango-btn-primary {
-  background: linear-gradient(135deg, #f97316, #ea580c);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  box-shadow: 0 4px 16px rgba(249, 115, 22, 0.3);
-  transition: all 0.3s ease;
-}
-
-.vango-btn-primary:hover {
-  background: linear-gradient(135deg, #ea580c, #c2410c);
-  box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
-  transform: translateY(-1px);
-}
-
-/* Vango card styles */
-.vango-card {
-  background: rgba(30, 41, 59, 0.8);
-  border: 1px solid rgba(249, 115, 22, 0.2);
-  backdrop-filter: blur(12px);
-  transition: all 0.3s ease;
-}
-
-.vango-card:hover {
-  border-color: rgba(249, 115, 22, 0.4);
-  box-shadow: 0 8px 32px rgba(249, 115, 22, 0.2);
-  transform: translateY(-2px);
-}
-
-/* Mobile-first responsive design with enhanced touch support */
-@media (max-width: 480px) {
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .vango-glass-card {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-  }
-
-  /* Enhanced touch targets for mobile */
-  button,
-  a,
-  [role="button"],
-  input[type="button"],
-  input[type="submit"] {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
-  /* Prevent zoom on form inputs */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-  }
-
-  /* Optimize scrolling */
-  * {
-    -webkit-overflow-scrolling: touch;
-  }
-
-  /* Improve tap highlighting */
-  * {
-    -webkit-tap-highlight-color: rgba(249, 115, 22, 0.2);
-  }
-}
-
-/* PWA and mobile app optimizations */
-@media (display-mode: standalone) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
-}
-
-/* Landscape mode optimizations */
-@media (orientation: landscape) and (max-height: 500px) {
-  .bottom-nav {
-    padding: 0.25rem 0;
-  }
-
-  .header {
-    padding: 0.5rem 1rem;
-  }
-}
-
-/* Vango loading spinner */
-.vango-spinner {
-  border: 3px solid rgba(249, 115, 22, 0.3);
-  border-top: 3px solid #f97316;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Enhanced mobile interactions */
-.touch-manipulation {
-  touch-action: manipulation;
-}
-
-.no-select {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Active states for better mobile feedback */
-.active-scale {
-  transition: transform 0.1s ease;
-}
-
-.active-scale:active {
-  transform: scale(0.95);
 }
