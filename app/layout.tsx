@@ -1,43 +1,56 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
-import "./globals.css"
+import { Inter, JetBrains_Mono } from "next/font/google"
 import { Suspense } from "react"
-import LoadingWrapper from "./loading-wrapper"
+import { ErrorBoundary } from "@/components/error-boundary"
+import { OfflineIndicator } from "@/components/offline-indicator"
+import { FullScreenLoading } from "@/components/loading-fallback"
+import { Toaster } from "@/components/ui/toaster"
+import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: "VANGO - Fast Delivery Service",
-  description: "Fast, reliable delivery service connecting customers with professional drivers",
-  generator: "v0.app",
-  manifest: "/manifest.json",
-  icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon-192.jpg", sizes: "192x192", type: "image/jpeg" },
-      { url: "/icon-512.jpg", sizes: "512x512", type: "image/jpeg" },
-    ],
-    apple: [{ url: "/apple-icon.jpg", sizes: "180x180", type: "image/jpeg" }],
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "VANGO",
-  },
-  formatDetection: {
-    telephone: false,
-  },
+  title: "VanGo - Premium Hardware Material Delivery",
+  description:
+    "VanGo connects you with reliable drivers for seamless transportation of your hardware materials. From cement to metal sheets, we've got your delivery needs covered.",
+  generator: "VanGo Delivery App v1.1.0",
+  keywords: "VanGo, delivery, hardware materials, transportation, South Africa, Pretoria, drivers, logistics",
+  authors: [{ name: "VanGo Delivery (PTY) Ltd." }],
+  creator: "VanGo Delivery (PTY) Ltd.",
+  publisher: "VanGo Delivery (PTY) Ltd.",
+  robots: "index, follow",
   openGraph: {
+    title: "VanGo - Premium Hardware Material Delivery",
+    description: "Reliable drivers for seamless transportation of your hardware materials",
     type: "website",
-    siteName: "VANGO",
-    title: "VANGO - Fast Delivery Service",
-    description: "Fast, reliable delivery service connecting customers with professional drivers",
+    locale: "en_ZA",
+    siteName: "VanGo",
   },
   twitter: {
-    card: "summary",
-    title: "VANGO - Fast Delivery Service",
-    description: "Fast, reliable delivery service connecting customers with professional drivers",
+    card: "summary_large_image",
+    title: "VanGo - Premium Hardware Material Delivery",
+    description: "Reliable drivers for seamless transportation of your hardware materials",
+  },
+  viewport: "width=device-width, initial-scale=1",
+  themeColor: "#f97316",
+  applicationName: "VanGo Delivery",
+  category: "business",
+  classification: "Delivery & Logistics",
+  other: {
+    company: "VanGo Delivery (PTY) Ltd.",
+    version: "1.1.0",
+    copyright: "© 2025 VanGo Delivery (PTY) Ltd. All rights reserved.",
   },
 }
 
@@ -47,12 +60,32 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Suspense fallback={null}>
-          <LoadingWrapper>{children}</LoadingWrapper>
-        </Suspense>
-        <Analytics />
+    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} antialiased dark`}>
+      <head>
+        <link rel="icon" type="image/svg+xml" href="/vango-favicon.jpg" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#f97316" />
+        <meta name="msapplication-TileColor" content="#f97316" />
+        <meta name="application-name" content="VanGo Delivery" />
+        <meta name="apple-mobile-web-app-title" content="VanGo" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="format-detection" content="telephone=no" />
+
+        {/* Preload critical resources */}
+        <link rel="preload" href="/images/vango-logo-new.svg" as="image" />
+        <link rel="preload" href="/vango-favicon.jpg" as="image" />
+
+        {/* DNS prefetch for external resources */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+      </head>
+      <body className="font-sans">
+        <ErrorBoundary>
+          <Suspense fallback={<FullScreenLoading />}>{children}</Suspense>
+          <OfflineIndicator />
+          <Toaster />
+        </ErrorBoundary>
       </body>
     </html>
   )

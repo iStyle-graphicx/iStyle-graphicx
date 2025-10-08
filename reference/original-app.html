@@ -1,0 +1,2604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>VanGo Delivery - Live Real-Time App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://www.paypal.com/sdk/js?client-id=AQRgKHn2Z2OfHojOQioNu3bKGKoOIUhI9tVwrk3Y9h-8J1503-7j7wNzipFLNjpRHQ67NaZAmwhPMEWq&currency=ZAR"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: 'var(--primary)',
+            secondary: 'var(--secondary)',
+            accent: 'var(--accent)',
+            glass: 'var(--glass)',
+            'glass-border': 'var(--glass-border)',
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --primary: #0f172a;
+      --secondary: #1e293b;
+      --accent: #f97316;
+      --glass: rgba(255, 255, 255, 0.1);
+      --glass-border: rgba(255, 255, 255, 0.2);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+      overscroll-behavior: contain;
+      min-height: 100vh;
+    }
+    
+  /* Welcome Loader */
+    #welcomeLoader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease-out;
+    }
+    
+    .loader-logo {
+      font-size: 3.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #f97316, #f59e0b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2rem;
+      animation: pulse 2s infinite;
+    }
+    
+    .loader-spinner {
+      width: 50px;
+      height: 50px;
+      border: 5px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      border-top: 5px solid #f97316;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    
+    /* Neumorphic Glass Style */
+    .glass-card {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 
+        0 8px 32px 0 rgba(0, 0, 0, 0.36),
+        inset 0 2px 4px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -2px 4px 0 rgba(0, 0, 0, 0.2);
+      border-radius: 16px;
+    }
+    
+    .glass-button {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 
+        0 4px 12px 0 rgba(0, 0, 0, 0.3),
+        inset 0 1px 2px 0 rgba(255, 255, 255, 0.1),
+        inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    
+    .glass-button:hover {
+      box-shadow: 
+        0 6px 16px 0 rgba(0, 0, 0, 0.4),
+        inset 0 1px 2px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .glass-button:active {
+      box-shadow: 
+        0 2px 8px 0 rgba(0, 0, 0, 0.3),
+        inset 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+      transform: translateY(0);
+    }
+    
+    .glass-input {
+      background: rgba(15, 23, 42, 0.3);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 
+        inset 0 2px 4px 0 rgba(0, 0, 0, 0.2),
+        0 2px 8px 0 rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      color: white;
+    }
+    
+    .glass-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 
+        inset 0 2px 4px 0 rgba(0, 0, 0, 0.2),
+        0 0 0 3px rgba(249, 115, 22, 0.3);
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    
+    main {
+      flex-grow: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 80px;
+    }
+    
+    main::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    main::-webkit-scrollbar-thumb {
+      background-color: var(--accent);
+      border-radius: 3px;
+    }
+    
+    .modal-hidden {
+      display: none !important;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    
+    .modal-visible {
+      display: flex !important;
+      opacity: 1;
+      pointer-events: auto;
+      transition: opacity 0.3s ease;
+    }
+    
+    #map {
+      height: 300px;
+      width: 100%;
+      border-radius: 16px;
+      z-index: 1;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .animate-pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
+    .progress-bar {
+      height: 6px;
+      border-radius: 3px;
+      background-color: #374151;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background-color: var(--accent);
+      transition: width 0.5s ease;
+    }
+    
+    .notification-badge {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: #ef4444;
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    
+    .driver-onboarding-step {
+      display: none;
+    }
+    
+    .driver-onboarding-step.active {
+      display: block;
+      animation: fadeIn 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .tracking-marker {
+      width: 24px;
+      height: 24px;
+      border-radius: 50% 50% 50% 0;
+      background: var(--accent);
+      transform: rotate(-45deg);
+      box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+      position: relative;
+    }
+    
+    .tracking-marker::after {
+      content: '';
+      width: 12px;
+      height: 12px;
+      margin: 6px;
+      background: white;
+      position: absolute;
+      border-radius: 50%;
+    }
+    
+    .vango-logo {
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #f97316, #f59e0b);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+    }
+    
+    .home-start-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    
+    .slide-up {
+      animation: slideUp 0.8s ease-out forwards;
+    }
+    
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .fade-in {
+      animation: fadeIn 1s ease-out forwards;
+    }
+    
+    .whatsapp-btn {
+      background-color: #25D366;
+      color: white;
+      border-radius: 50px;
+      padding: 12px 24px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+    
+    .whatsapp-btn:hover {
+      background-color: #128C7E;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+    }
+    
+    .section-hidden {
+      display: none;
+    }
+    
+    .section-visible {
+      display: block;
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    
+    .toast.show {
+      opacity: 1;
+    }
+    
+    /* New neumorphic glass nav */
+    .bottom-nav {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-top: 1px solid var(--glass-border);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .nav-item {
+      transition: all 0.3s ease;
+    }
+    
+    .nav-item.active {
+      color: var(--accent);
+      transform: translateY(-5px);
+    }
+    
+    /* Login/Register Modal Styles */
+    .modal-content {
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
+    }
+    
+    /* Delivery area icons */
+    .area-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+    
+     /* Weather widget */
+    .weather-widget {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    /* Driver card */
+    .driver-card {
+      transition: all 0.3s ease;
+    }
+    
+    .driver-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    /* Star rating */
+    .star-rating {
+      color: #fbbf24;
+    }
+    
+    /* Notification animations */
+    @keyframes slideInRight {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    @keyframes slideOutRight {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+      to {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+    }
+    
+    .notification-item {
+      animation: slideInRight 0.3s forwards;
+    }
+    
+    .notification-item.removing {
+      animation: slideOutRight 0.3s forwards;
+    }
+    
+    /* Profile image upload */
+    .profile-image-container {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
+    }
+    
+    .profile-image {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--accent);
+    }
+    
+    .profile-image-overlay {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      background: var(--accent);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    
+    /* Learn More Section Styles */
+    .feature-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #f97316, #f59e0b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 20px rgba(249, 115, 22, 0.3);
+    }
+    
+    .benefit-card {
+      transition: all 0.3s ease;
+    }
+    
+    .benefit-card:hover {
+      transform: translateY(-5px);
+    }
+    
+    /* Settings Section Styles */
+    .settings-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .settings-item {
+      padding: 1rem;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    
+    .settings-item:last-child {
+      border-bottom: none;
+    }
+    
+    /* Upload receipt styles */
+    .upload-area {
+      border: 2px dashed var(--glass-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: rgba(249, 115, 22, 0.1);
+    }
+    
+    .upload-area.active {
+      border-color: var(--accent);
+      background: rgba(249, 115, 22, 0.1);
+    }
+    
+    /* Animation for Learn More section */
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .floating-icon {
+      animation: float 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body>
+  <!-- Welcome Loader -->
+  <div id="welcomeLoader">
+    <div class="loader-logo">VANGO</div>
+    <div class="loader-spinner"></div>
+    <p class="mt-4 text-gray-300">Loading your delivery experience...</p>
+  </div>
+
+  <div id="app" role="main" aria-label="VanGo Delivery Mobile Application">
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="assertive"></div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+      <div class="modal-content w-full max-w-md p-6 rounded-2xl">
+        <h2 class="text-2xl font-bold mb-6 text-center">Login to VanGo</h2>
+        <form id="loginForm">
+          <div class="mb-4">
+            <label for="loginEmail" class="block text-sm font-medium mb-1">Email</label>
+            <input type="email" id="loginEmail" class="glass-input w-full px-4 py-3" placeholder="Your email" required>
+          </div>
+          <div class="mb-6">
+            <label for="loginPassword" class="block text-sm font-medium mb-1">Password</label>
+            <input type="password" id="loginPassword" class="glass-input w-full px-4 py-3" placeholder="Your password" required>
+          </div>
+          <button type="submit" class="glass-button w-full bg-accent text-white py-3 font-semibold mb-4">Login</button>
+        </form>
+        <p class="text-center text-sm">
+          Don't have an account? 
+          <button id="switchToRegister" class="text-accent font-semibold">Register</button>
+        </p>
+        <button id="closeLoginModal" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+      </div>
+    </div>
+
+    <!-- Register Modal -->
+    <div id="registerModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+      <div class="modal-content w-full max-w-md p-6 rounded-2xl">
+        <h2 class="text-2xl font-bold mb-6 text-center">Create an Account</h2>
+        <form id="registerForm">
+          <div class="mb-4">
+            <label for="registerName" class="block text-sm font-medium mb-1">Full Name</label>
+            <input type="text" id="registerName" class="glass-input w-full px-4 py-3" placeholder="Your name" required>
+          </div>
+          <div class="mb-4">
+            <label for="registerEmail" class="block text-sm font-medium mb-1">Email</label>
+            <input type="email" id="registerEmail" class="glass-input w-full px-4 py-3" placeholder="Your email" required>
+          </div>
+          <div class="mb-4">
+            <label for="registerPassword" class="block text-sm font-medium mb-1">Password</label>
+            <input type="password" id="registerPassword" class="glass-input w-full px-4 py-3" placeholder="Create a password" required minlength="6">
+          </div>
+          <div class="mb-6">
+            <label for="registerUserType" class="block text-sm font-medium mb-1">I am a:</label>
+            <select id="registerUserType" class="glass-input w-full px-4 py-3" required>
+              <option value="customer">Customer</option>
+              <option value="driver">Driver</option>
+            </select>
+          </div>
+          <button type="submit" class="glass-button w-full bg-accent text-white py-3 font-semibold mb-4">Create Account</button>
+        </form>
+        <p class="text-center text-sm">
+          Already have an account? 
+          <button id="switchToLogin" class="text-accent font-semibold">Login</button>
+        </p>
+        <button id="closeRegisterModal" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+      </div>
+    </div>
+
+    <!-- Home Start Section -->
+    <section id="homeStartSection" class="home-start-section">
+      <div class="vango-logo slide-up">VANGO</div>
+      <p class="text-gray-300 mt-4 mb-8 fade-in">Premium Hardware Material Delivery</p>
+      <div class="flex flex-col gap-4 w-full max-w-xs">
+        <button id="startLoginBtn" class="glass-button bg-accent text-white px-6 py-3 rounded-full font-semibold transition" aria-label="Login Button">
+          Login
+        </button>
+        <button id="startRegisterBtn" class="glass-button border border-accent text-accent px-6 py-3 rounded-full font-semibold transition" aria-label="Register Button">
+          Register
+        </button>
+        <div class="relative my-4">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-700"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-transparent text-gray-400">Or continue with</span>
+          </div>
+        </div>
+        <a href="https://wa.me/27746297208?text=Hi%20VanGo!%20I%20would%like%20to%20register%20for%20an%20account%as%a%Customer.%My%Email%address%is:" class="whatsapp-btn justify-center w-full" aria-label="WhatsApp Register Link">
+          <i class="fab fa-whatsapp text-xl" aria-hidden="true"></i>
+          WhatsApp Register
+        </a>
+      </div>
+    </section>
+
+    <!-- Main App (initially hidden) -->
+    <div id="mainApp" class="hidden" aria-live="polite">
+      <!-- Header -->
+      <header class="flex items-center justify-between px-4 py-3 bottom-nav sticky top-0 z-50" role="banner">
+        <h1 class="text-accent font-bold text-xl" tabindex="0">VanGo</h1>
+        <div class="flex items-center gap-3">
+          <div class="weather-widget hidden" id="weatherWidget">
+            <i class="fas fa-sun text-yellow-400 text-xl"></i>
+            <span>35°C</span>
+          </div>
+          <button id="notificationsBtn" aria-label="Notifications" class="relative text-white text-xl rounded p-1">
+            <i class="fas fa-bell" aria-hidden="true"></i>
+            <span id="notificationCount" class="notification-badge hidden" aria-live="polite" aria-atomic="true">3</span>
+          </button>
+          <button id="menuToggle" aria-label="Open menu" class="text-white text-2xl rounded">
+            <i class="fas fa-bars" aria-hidden="true"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Side Menu -->
+      <nav id="sideMenu" class="fixed top-10 left-0 h-full w-50 glass-card shadow-lg transform -translate-x-full transition-transform z-100" aria-label="Main navigation" aria-hidden="true" tabindex="-100">
+        <div class="flex items-center justify-between px-4 py-30 border-b border-glass-border">
+          <h2 class="text-accent font-bold text-lg">Menu</h2>
+          <button id="menuClose" aria-label="Close menu" class="text-white text-2xl rounded">
+            &times;
+          </button>
+        </div>
+        <div class="p-4 border-b border-glass-border">
+          <div class="flex items-center gap-3 mb-2">
+            <div id="menuUserAvatar" class="w-12 h-12 bg-accent rounded-full flex items-center justify-center text-white text-xl" aria-hidden="true">
+              <i class="fas fa-user"></i>
+            </div>
+            <div>
+              <p class="font-semibold" id="menuUserName">Guest User</p>
+              <p class="text-xs text-gray-400" id="menuUserRole">Not logged in</p>
+            </div>
+          </div>
+          <div class="weather-widget mt-2 hidden" id="menuWeatherWidget">
+            <i class="fas fa-cloud-sun text-yellow-400"></i>
+            <span class="text-sm">Pretoria, 25°C</span>
+          </div>
+        </div>
+        <ul class="flex flex-col text-gray-300 text-base font-semibold space-y-4 p-4" role="menu">
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="homeSection" role="menuitem"><i class="fas fa-home w-5" aria-hidden="true"></i> Home</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="profileSection" role="menuitem"><i class="fas fa-user-circle w-5" aria-hidden="true"></i> Profile</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="trackDeliverySection" role="menuitem"><i class="fas fa-map-marker-alt w-5" aria-hidden="true"></i> Track Delivery</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="deliveryHistorySection" role="menuitem"><i class="fas fa-history w-5" aria-hidden="true"></i> Delivery History</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="driversPortalSection" role="menuitem"><i class="fas fa-truck w-5" aria-hidden="true"></i> Drivers Portal</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="servicesSection" role="menuitem"><i class="fas fa-cogs w-5" aria-hidden="true"></i> Services</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="deliveryAreasSection" role="menuitem"><i class="fas fa-map-marked-alt w-5" aria-hidden="true"></i> Delivery Areas</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="settingsSection" role="menuitem"><i class="fas fa-cog w-5" aria-hidden="true"></i> Settings</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="helpSupportSection" role="menuitem"><i class="fas fa-headset w-5" aria-hidden="true"></i> Help & Support</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="termsSection" role="menuitem"><i class="fas fa-file-contract w-5" aria-hidden="true"></i> Terms of Service</button></li>
+          <li><button class="nav-link w-full text-left py-2 flex items-center gap-3" data-target="privacySection" role="menuitem"><i class="fas fa-shield-alt w-5" aria-hidden="true"></i> Privacy Policy</button></li>
+          <li><hr class="border-glass-border" /></li>
+          <li><button id="loginMenuBtn" class="text-accent font-semibold w-full text-left py-2 flex items-center gap-3" role="menuitem"><i class="fas fa-sign-in-alt w-5" aria-hidden="true"></i> Login / Register</button></li>
+          <li id="logoutMenuItem" class="hidden"><button id="logoutMenuBtn" class="text-red-500 font-semibold w-full text-left py-2 flex items-center gap-3" role="menuitem"><i class="fas fa-sign-out-alt w-5" aria-hidden="true"></i> Logout</button></li>
+        </ul>
+      </nav>
+
+      <!-- Overlay -->
+      <div id="overlay" class="fixed inset-257 bg-black bg-opacity-70 hidden z-50" tabindex="100px" aria-hidden="true"></div>
+
+      <!-- Main Content -->
+      <main id="mainContent" tabindex="50">
+        <!-- Home Section -->
+        <section id="homeSection" class="px-4 pt-6 pb-16 section-visible">
+          <p class="text-accent font-semibold text-sm uppercase tracking-wide mb-2">Premium Delivery</p>
+          <h2 class="text-3xl font-extrabold leading-tight mb-4">
+            Hardware Material <br />
+            <span class="text-accent">Delivery Made Simple</span>
+          </h2>
+          <p class="text-gray-300 text-base mb-6">
+            VanGo connects you with reliable drivers for seamless transportation of your hardware materials. From cement to metal sheets, we've got your delivery needs covered.
+          </p>
+          <div class="flex space-x-4 mb-10">
+            <button id="requestDeliveryBtn" class="glass-button bg-accent text-white px-6 py-2 rounded font-semibold flex-grow">Request Delivery</button>
+            <button id="learnMoreBtn" class="glass-button border border-white text-white px-6 py-2 rounded font-semibold flex-grow">Learn More</button>
+          </div>
+
+          <div class="glass-card p-4 mb-8">
+            <h3 class="text-xl font-bold mb-4">How It Works</h3>
+            <div class="space-y-4">
+              <div class="flex items-start gap-3">
+                <div class="bg-accent rounded-full w-8 h-8 flex items-center justify-center text-white font-bold flex-shrink-0">1</div>
+                <div>
+                  <h4 class="font-semibold">Request a Delivery</h4>
+                  <p class="text-gray-300 text-sm">Enter your delivery details and material information.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="bg-accent rounded-full w-8 h-8 flex items-center justify-center text-white font-bold flex-shrink-0">2</div>
+                <div>
+                  <h4 class="font-semibold">Get Matched</h4>
+                  <p class="text-gray-300 text-sm">Our system finds the best driver for your needs.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="bg-accent rounded-full w-8 h-8 flex items-center justify-center text-white font-bold flex-shrink-0">3</div>
+                <div>
+                  <h4 class="font-semibold">Track in Real-Time</h4>
+                  <p class="text-gray-300 text-sm">Monitor your delivery from pickup to destination.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card p-4">
+            <h3 class="text-xl font-bold mb-4">Popular Services</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <div class="glass-card p-3 text-center">
+                <i class="fas fa-box text-accent text-2xl mb-2"></i>
+                <p class="text-sm">Construction Materials</p>
+              </div>
+              <div class="glass-card p-3 text-center">
+                <i class="fas fa-tools text-accent text-2xl mb-2"></i>
+                <p class="text-sm">Tools & Equipment</p>
+              </div>
+              <div class="glass-card p-3 text-center">
+                <i class="fas fa-warehouse text-accent text-2xl mb-2"></i>
+                <p class="text-sm">Bulk Deliveries</p>
+              </div>
+              <div class="glass-card p-3 text-center">
+                <i class="fas fa-bolt text-accent text-2xl mb-2"></i>
+                <p class="text-sm">Emergency Deliveries</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profileSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">My Profile</h2>
+          
+          <div class="flex items-center gap-4 mb-6">
+            <div id="profileUserAvatar" class="w-16 h-16 bg-accent rounded-full flex items-center justify-center text-white text-2xl">
+              <i class="fas fa-user"></i>
+            </div>
+            <div>
+              <h3 id="profileUserName" class="font-semibold">Guest User</h3>
+              <p id="profileUserEmail" class="text-gray-400 text-sm">Not logged in</p>
+            </div>
+          </div>
+          
+          <div class="glass-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Account Information</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-400">User ID:</span>
+                <span id="profileUserId" class="font-medium">N/A</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Account Type:</span>
+                <span id="profileUserType" class="font-medium">Guest</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Member Since:</span>
+                <span id="profileMemberSince" class="font-medium">N/A</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Delivery Statistics</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between">
+                <span class="text-gray-400">Total Deliveries:</span>
+                <span class="font-medium">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Pending Deliveries:</span>
+                <span class="font-medium">0</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">Completed Deliveries:</span>
+                <span class="font-medium">0</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-4">
+            <h3 class="text-lg font-semibold mb-4">Account Actions</h3>
+            <div class="space-y-3">
+              <button class="w-full glass-button bg-accent text-white py-2 rounded font-semibold">Edit Profile</button>
+              <button class="w-full glass-button bg-secondary text-white py-2 rounded font-semibold">Payment Methods</button>
+              <button id="logoutBtn" class="w-full glass-button bg-red-600 text-white py-2 rounded font-semibold">Logout</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Track Delivery Section -->
+        <section id="trackDeliverySection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Track Delivery</h2>
+          
+          <div class="glass-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Enter Tracking Code</h3>
+            <div class="flex gap-2">
+              <input type="text" id="trackingCodeInput" placeholder="Enter tracking code" class="flex-grow glass-input px-4 py-2 text-white">
+              <button id="trackDeliveryBtn" class="glass-button bg-accent text-white px-4 py-2 rounded font-semibold">Track</button>
+            </div>
+          </div>
+          
+          <div id="trackingResults" class="hidden glass-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Delivery Status</h3>
+            <div class="mb-4">
+              <div class="flex justify-between mb-1">
+                <span class="text-gray-400">Tracking Code:</span>
+                <span id="trackingCode" class="font-medium">N/A</span>
+              </div>
+              <div class="flex justify-between mb-1">
+                <span class="text-gray-400">Status:</span>
+                <span id="trackingStatus" class="font-medium text-accent">Pending</span>
+              </div>
+              <div class="flex justify-between mb-1">
+                <span class="text-gray-400">Estimated Arrival:</span>
+                <span id="trackingETA" class="font-medium">N/A</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div id="trackingProgress" class="progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-4">
+            <h3 class="text-lg font-semibold mb-4">Recent Deliveries</h3>
+            <div id="recentDeliveries" class="space-y-3">
+              <p class="text-gray-400 text-center py-4">No recent deliveries found</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Additional sections would continue here with similar enhancements -->
+
+      </main>
+
+        <!-- Delivery History Section -->
+        <section id="deliveryHistorySection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Delivery History</h2>
+          
+          <div class="glass-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-4">Filter Deliveries</h3>
+            <div class="flex gap-2">
+              <select class="flex-grow glass-input px-4 py-2 text-white">
+                <option>All Statuses</option>
+                <option>Pending</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </select>
+              <select class="flex-grow glass-input px-4 py-2 text-white">
+                <option>All Time</option>
+                <option>Last 7 Days</option>
+                <option>Last 30 Days</option>
+                <option>Last 90 Days</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="glass-card p-4">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h3 class="font-semibold">Construction Materials Delivery</h3>
+                  <p class="text-sm text-gray-400">Tracking: VAN123456</p>
+                </div>
+                <span class="px-2 py-1 bg-green-500 text-white text-xs rounded-full">Completed</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p class="text-gray-400">From:</p>
+                  <p>Mabopane Hardware</p>
+                </div>
+                <div>
+                  <p class="text-gray-400">To:</p>
+                  <p>Construction Site, Rosslyn</p>
+                </div>
+              </div>
+              <div class="flex justify-between items-center mt-3">
+                <p class="text-sm text-gray-400">15 May 2023</p>
+                <p class="font-semibold">R 245.00</p>
+              </div>
+            </div>
+            
+            <div class="glass-card p-4">
+              <div class="flex justify-between items-start mb-2">
+                <div>
+                  <h3 class="font-semibold">Tools & Equipment</h3>
+                  <p class="text-sm text-gray-400">Tracking: VAN654321</p>
+                </div>
+                <span class="px-2 py-1 bg-yellow-500 text-white text-xs rounded-full">In Progress</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p class="text-gray-400">From:</p>
+                  <p>Tool Center, Pretoria</p>
+                </div>
+                <div>
+                  <p class="text-gray-400">To:</p>
+                  <p>Residence, Soshanguve</p>
+                </div>
+              </div>
+              <div class="flex justify-between items-center mt-3">
+                <p class="text-sm text-gray-400">18 May 2023</p>
+                <p class="font-semibold">R 185.00</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Drivers Portal Section -->
+        <section id="driversPortalSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Drivers Portal</h2>
+          
+          <div id="driverNotRegistered" class="glass-card p-6 text-center mb-6">
+            <i class="fas fa-truck text-accent text-4xl mb-4"></i>
+            <h3 class="text-xl font-semibold mb-2">Become a VanGo Driver</h3>
+            <p class="text-gray-300 mb-4">Join our network of delivery drivers and start earning money on your schedule.</p>
+            <button id="startDriverOnboarding" class="glass-button bg-accent text-white px-6 py-2 rounded font-semibold">Get Started</button>
+          </div>
+          
+          <div id="driverOnboarding" class="hidden">
+            <div class="driver-onboarding-step active" data-step="1">
+              <div class="glass-card p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Register as Driver</h3>
+                <p class="text-gray-300 mb-4 text-sm">Drivers earn up to 80% of the delivery fee and can choose their own schedule.</p>
+                <p class="text-gray-300 mb-4 text-sm">Driver applications require verification. We'll send approval instructions to your email and WhatsApp after review.</p>
+                
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-1">First Name</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your first name" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Last Name</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your last name" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Email Address</label>
+                    <input type="email" class="glass-input w-full px-4 py-2" placeholder="Your email address" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Phone Number</label>
+                    <input type="tel" class="glass-input w-full px-4 py-2" placeholder="Your phone number" required>
+                    <p class="text-xs text-gray-400 mt-1">This number will be used for WhatsApp verification messages.</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Account Number</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your bank account number" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Profile Photo</label>
+                    <div class="border-2 border-dashed border-glass-border rounded-lg p-4 text-center">
+                      <i class="fas fa-camera text-accent text-2xl mb-2"></i>
+                      <p class="text-sm text-gray-300">Upload a profile photo</p>
+                      <button class="glass-button bg-gray-700 text-white px-4 py-1 mt-2 text-sm">Select File</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" class="glass-input w-full px-4 py-2" placeholder="Create a password" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Confirm Password</label>
+                    <input type="password" class="glass-input w-full px-4 py-2" placeholder="Confirm your password" required>
+                  </div>
+                </div>
+              </div>
+              <div class="flex justify-between">
+                <button class="glass-button bg-gray-600 text-white px-6 py-2 rounded font-semibold" disabled>Back</button>
+                <button class="next-step glass-button bg-accent text-white px-6 py-2 rounded font-semibold" data-next="2">Next: Vehicle Information</button>
+              </div>
+              <p class="text-xs text-gray-400 text-center mt-4">By creating an account, you agree to our <a href="#" class="text-accent">Terms of Service</a> and <a href="#" class="text-accent">Privacy Policy</a></p>
+            </div>
+            
+            <div class="driver-onboarding-step" data-step="2">
+              <div class="glass-card p-6 mb-6">
+                <h3 class="text-xl font-semibold mb-4">Vehicle Information</h3>
+                <p class="text-gray-300 mb-4 text-sm">Drivers earn up to 80% of the delivery fee and can choose their own schedule.</p>
+                <p class="text-gray-300 mb-4 text-sm">Driver applications require verification. We'll send approval instructions to your email and WhatsApp after review.</p>
+                
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Vehicle Type</label>
+                    <select class="glass-input w-full px-4 py-2" required>
+                      <option value="">Select Vehicle Type</option>
+                      <option value="pickup">Pickup Truck</option>
+                      <option value="van">Van/Minivan</option>
+                      <option value="light">Light Truck</option>
+                      <option value="heavy">Heavy Duty Truck</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">License Plate Number</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="e.g. ABC 123 GP" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Driver's License Number</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your driver's license number" required>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1">Insurance Policy Number</label>
+                    <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your insurance policy number" required>
+                  </div>
+                </div>
+              </div>
+              <div class="flex justify-between">
+                <button class="prev-step glass-button bg-gray-600 text-white px-6 py-2 rounded font-semibold" data-prev="1">Back</button>
+                <button id="submitDriverApplication" class="glass-button bg-accent text-white px-6 py-2 rounded font-semibold">Create Account</button>
+              </div>
+              <p class="text-xs text-gray-400 text-center mt-4">By creating an account, you agree to our <a href="#" class="text-accent">Terms of Service</a> and <a href="#" class="text-accent">Privacy Policy</a></p>
+            </div>
+          </div>
+          
+          <div id="driverDashboard" class="hidden">
+            <div class="glass-card p-6 mb-6">
+              <h3 class="text-xl font-semibold mb-4">Driver Dashboard</h3>
+              <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="glass-card p-4 text-center">
+                  <div class="text-2xl font-bold text-accent mb-1">12</div>
+                  <div class="text-sm">Completed Deliveries</div>
+                </div>
+                <div class="glass-card p-4 text-center">
+                  <div class="text-2xl font-bold text-accent mb-1">R 3,420</div>
+                  <div class="text-sm">Total Earnings</div>
+                </div>
+              </div>
+              
+              <div class="mb-6">
+                <h4 class="font-semibold mb-2">Earning Potential</h4>
+                <div class="glass-card p-4 space-y-3">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Light Materials</span>
+                    <span class="font-semibold">R30-R45/km</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Medium Materials</span>
+                    <span class="font-semibold">R40-R60/km</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Heavy Materials</span>
+                    <span class="font-semibold">R50-R80/km</span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm">Bulk Orders</span>
+                    <span class="font-semibold">R70-R100/km</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-4">
+                <h4 class="font-semibold mb-2">Current Delivery</h4>
+                <div class="glass-card p-4">
+                  <div class="flex justify-between mb-2">
+                    <span class="text-gray-400">Tracking Code:</span>
+                    <span class="font-medium">VAN123456</span>
+                  </div>
+                  <div class="flex justify-between mb-2">
+                    <span class="text-gray-400">Status:</span>
+                    <span class="font-medium text-accent">In Transit</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Estimated Arrival:</span>
+                    <span class="font-medium">25 min</span>
+                  </div>
+                  <button class="glass-button bg-accent text-white w-full mt-3 py-2">View Details</button>
+                </div>
+              </div>
+              <button class="glass-button bg-gray-700 text-white w-full py-2">Delivery History</button>
+            </div>
+            
+            <div class="glass-card p-6">
+              <h3 class="text-xl font-semibold mb-4">Driver Requirements</h3>
+              <ul class="space-y-2 text-sm">
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Valid South African driver's license</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Vehicle in good condition (2010 or newer)</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Proof of vehicle insurance</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Clean driving record</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Smartphone with data connection</span>
+                </li>
+                <li class="flex items-start gap-2">
+                  <i class="fas fa-check-circle text-green-500 mt-1"></i>
+                  <span>Ability to lift up to 25kg</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="servicesSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Our Services</h2>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Service Areas</h3>
+            <p class="text-gray-300 mb-4">We deliver across the metro area with same-day delivery to various locations.</p>
+            
+            <div class="space-y-4">
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-hard-hat text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Construction Sites</h4>
+                  <p class="text-sm text-gray-300">Timely delivery of materials to construction sites</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-warehouse text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Warehouses</h4>
+                  <p class="text-sm text-gray-300">Efficient logistics for warehouse operations</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-home text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Residential Locations</h4>
+                  <p class="text-sm text-gray-300">Safe and secure delivery to homes</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-city text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Downtown Areas</h4>
+                  <p class="text-sm text-gray-300">Urban delivery solutions</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-industry text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Industrial Zones</h4>
+                  <p class="text-sm text-gray-300">Heavy-duty delivery for industrial needs</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-xl font-semibold mb-4">Delivery Options</h3>
+            
+            <div class="space-y-4">
+              <div class="flex justify-between items-center">
+                <div>
+                  <h4 class="font-semibold">Standard Delivery</h4>
+                  <p class="text-sm text-gray-300">Within 24-48 hours</p>
+                </div>
+                <span class="font-semibold">From R50</span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <div>
+                  <h4 class="font-semibold">Express Delivery</h4>
+                  <p class="text-sm text-gray-300">Same day delivery</p>
+                </div>
+                <span class="font-semibold">From R100</span>
+              </div>
+              
+              <div class="flex justify-between items-center">
+                <div>
+                  <h4 class="font-semibold">Emergency Delivery</h4>
+                  <p class="text-sm text-gray-300">Within 2-4 hours</p>
+                </div>
+                <span class="font-semibold">From R150</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Delivery Areas Section -->
+        <section id="deliveryAreasSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Delivery Areas</h2>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">We Deliver To These Areas</h3>
+            
+            <div class="space-y-4 max-h-96 overflow-y-auto">
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Mabopane</h4>
+                  <p class="text-sm text-gray-300">Full coverage including Phase 1, 2, 3 and extensions</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Ga-Rankuwa</h4>
+                  <p class="text-sm text-gray-300">All zones including Industrial area</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Soshanguve</h4>
+                  <p class="text-sm text-gray-300">All blocks including BB, CC, FF, GG and extensions</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Klipgat</h4>
+                  <p class="text-sm text-gray-300">Township and surrounding areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Letlhabile</h4>
+                  <p class="text-sm text-gray-300">Residential and commercial areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Mmakau</h4>
+                  <p class="text-sm text-gray-300">Village and surrounding farms</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Mothotlung</h4>
+                  <p class="text-sm text-gray-300">Residential areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Hebron</h4>
+                  <p class="text-sm text-gray-300">Township and industrial area</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Erasmus</h4>
+                  <p class="text-sm text-gray-300">Agricultural and residential areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Rosslyn</h4>
+                  <p class="text-sm text-gray-300">Industrial hub and residential areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Pretoria Town</h4>
+                  <p class="text-sm text-gray-300">CBD and surrounding suburbs</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Winterveldt</h4>
+                  <p class="text-sm text-gray-300">All sections including extensions</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Kgabalatsane</h4>
+                  <p class="text-sm text-gray-300">Residential areas</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Orchards</h4>
+                  <p class="text-sm text-gray-300">Suburban residential area</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-xl font-semibold mb-4">Delivery Map</h3>
+            <div id="deliveryAreasMap" style="height: 300px; border-radius: 12px;"></div>
+            <p class="text-sm text-gray-300 mt-3">Our delivery coverage across Pretoria and surrounding areas</p>
+          </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settingsSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Settings</h2>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Account Settings</h3>
+            
+            <div class="space-y-4">
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Personal Information</h4>
+                    <p class="text-sm text-gray-400">Update your name, email, and contact details</p>
+                  </div>
+                  <button onclick="openEditProfileModal()" class="glass-button bg-accent text-white px-4 py-2 rounded text-sm">Edit</button>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Password</h4>
+                    <p class="text-sm text-gray-400">Change your password</p>
+                  </div>
+                  <button onclick="openChangePasswordModal()" class="glass-button bg-gray-700 text-white px-4 py-2 rounded text-sm">Change</button>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Notification Preferences</h4>
+                    <p class="text-sm text-gray-400">Manage how we contact you</p>
+                  </div>
+                  <button onclick="openNotificationSettingsModal()" class="glass-button bg-gray-700 text-white px-4 py-2 rounded text-sm">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Payment Settings</h3>
+            
+            <div class="space-y-4">
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Payment Methods</h4>
+                    <p class="text-sm text-gray-400">Add or remove payment methods</p>
+                  </div>
+                  <button onclick="openPaymentMethodsModal()" class="glass-button bg-accent text-white px-4 py-2 rounded text-sm">Manage</button>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Billing History</h4>
+                    <p class="text-sm text-gray-400">View your payment history</p>
+                  </div>
+                  <button onclick="openBillingHistoryModal()" class="glass-button bg-gray-700 text-white px-4 py-2 rounded text-sm">View</button>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Tax Information</h4>
+                    <p class="text-sm text-gray-400">Update your tax details</p>
+                  </div>
+                  <button onclick="openTaxInfoModal()" class="glass-button bg-gray-700 text-white px-4 py-2 rounded text-sm">Update</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-xl font-semibold mb-4">App Settings</h3>
+            
+            <div class="space-y-4">
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Language</h4>
+                    <p class="text-sm text-gray-400">Change app language</p>
+                  </div>
+                  <select class="glass-input px-3 py-1 text-sm">
+                    <option>English</option>
+                    <option>Afrikaans</option>
+                    <option>Zulu</option>
+                    <option>Sotho</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Theme</h4>
+                    <p class="text-sm text-gray-400">Change app appearance</p>
+                  </div>
+                  <select class="glass-input px-3 py-1 text-sm">
+                    <option>Dark</option>
+                    <option>Light</option>
+                    <option>Auto</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">Clear Cache</h4>
+                    <p class="text-sm text-gray-400">Free up storage space</p>
+                  </div>
+                  <button onclick="clearAppCache()" class="glass-button bg-red-600 text-white px-4 py-2 rounded text-sm">Clear</button>
+                </div>
+              </div>
+              
+              <div class="settings-item">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <h4 class="font-semibold">App Version</h4>
+                    <p class="text-sm text-gray-400">Current version information</p>
+                  </div>
+                  <span class="text-sm text-gray-400">v1.2.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Learn More Section -->
+        <section id="learnMoreSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">About VanGo</h2>
+          
+          <div class="glass-card p-6 mb-6 text-center">
+            <div class="floating-icon feature-icon mx-auto">
+              <i class="fas fa-truck-loading text-white text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Premium Hardware Delivery</h3>
+            <p class="text-gray-300 mb-4">VanGo is revolutionizing how hardware materials are delivered across South Africa. Our platform connects customers with verified drivers for fast, reliable delivery of construction materials, tools, and equipment.</p>
+          </div>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">How VanGo Works</h3>
+            
+            <div class="space-y-6">
+              <div class="benefit-card glass-card p-4 flex items-start gap-4">
+                <div class="feature-icon">
+                  <i class="fas fa-clipboard-list text-white text-2xl"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">1. Request a Delivery</h4>
+                  <p class="text-gray-300 text-sm">Enter your delivery details, upload a receipt, and specify what needs to be delivered. Our system will calculate the cost based on distance and materials.</p>
+                </div>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 flex items-start gap-4">
+                <div class="feature-icon">
+                  <i class="fas fa-user-check text-white text-2xl"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">2. Get Matched with a Driver</h4>
+                  <p class="text-gray-300 text-sm">Our algorithm finds the best available driver for your needs. You can see driver ratings, vehicle type, and estimated arrival time before confirming.</p>
+                </div>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 flex items-start gap-4">
+                <div class="feature-icon">
+                  <i class="fas fa-map-marked-alt text-white text-2xl"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">3. Track in Real-Time</h4>
+                  <p class="text-gray-300 text-sm">Monitor your delivery from pickup to destination. Get real-time updates and estimated arrival times directly to your phone.</p>
+                </div>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 flex items-start gap-4">
+                <div class="feature-icon">
+                  <i class="fas fa-check-circle text-white text-2xl"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">4. Secure Payment</h4>
+                  <p class="text-gray-300 text-sm">Pay securely through our platform. Drivers receive 80% of the delivery fee directly to their bank account, with VanGo handling all transaction security.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Why Choose VanGo</h3>
+            
+            <div class="grid grid-cols-2 gap-4">
+              <div class="benefit-card glass-card p-4 text-center">
+                <div class="feature-icon mx-auto">
+                  <i class="fas fa-shield-alt text-white text-2xl"></i>
+                </div>
+                <h4 class="font-semibold mb-1">Secure</h4>
+                <p class="text-gray-300 text-sm">All deliveries are insured for your peace of mind</p>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 text-center">
+                <div class="feature-icon mx-auto">
+                  <i class="fas fa-bolt text-white text-2xl"></i>
+                </div>
+                <h4 class="font-semibold mb-1">Fast</h4>
+                <p class="text-gray-300 text-sm">Same-day delivery across the metro area</p>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 text-center">
+                <div class="feature-icon mx-auto">
+                  <i class="fas fa-tools text-white text-2xl"></i>
+                </div>
+                <h4 class="font-semibold mb-1">Specialized</h4>
+                <p class="text-gray-300 text-sm">Designed specifically for hardware materials</p>
+              </div>
+              
+              <div class="benefit-card glass-card p-4 text-center">
+                <div class="feature-icon mx-auto">
+                  <i class="fas fa-hand-holding-usd text-white text-2xl"></i>
+                </div>
+                <h4 class="font-semibold mb-1">Fair Pricing</h4>
+                <p class="text-gray-300 text-sm">Transparent rates with no hidden fees</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-xl font-semibold mb-4">Our Service Areas</h3>
+            <p class="text-gray-300 mb-4">We deliver across the Pretoria metro area including:</p>
+            
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Mabopane</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Ga-Rankuwa</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Soshanguve</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Rosslyn</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Pretoria Town</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>Winterveldt</span>
+              </div>
+              <div class="flex items-center">
+                <i class="fas fa-check-circle text-accent mr-2"></i>
+                <span>And 8+ more areas</span>
+              </div>
+            </div>
+            
+            <button onclick="navigateTo('deliveryAreasSection')" class="glass-button bg-accent text-white w-full mt-4 py-2">View All Delivery Areas</button>
+          </div>
+        </section>
+        
+        
+        <!-- Learn More Modal -->
+<div id="learnMoreModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+  <div class="modal-content w-full max-w-md p-6 rounded-2xl">
+    <h2 class="text-2xl font-bold mb-6 text-center">About VanGo</h2>
+    <div class="space-y-6">
+      <div>
+        <h3 class="text-xl font-semibold">How VanGo Works</h3>
+        <p class="text-gray-300">VanGo connects customers with reliable drivers for hardware material delivery. Just request, track, and receive your delivery in real-time.</p>
+      </div>
+      <div>
+        <h3 class="text-xl font-semibold">Why Choose VanGo</h3>
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Fast and reliable delivery service</li>
+          <li>Real-time tracking of your delivery</li>
+          <li>Secure payment options</li>
+          <li>Verified and rated drivers</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-xl font-semibold">Features</h3>
+        <ul class="list-disc pl-5 space-y-2">
+          <li>Customer & Driver Profiles</li>
+          <li>Delivery Receipt Upload</li>
+          <li>Driver Ratings & Feedback</li>
+          <li>Email Verification & Support</li>
+        </ul>
+      </div>
+    </div>
+    <button onclick="closeLearnMoreModal()" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+  </div>
+</div>
+</section>
+        
+        <!-- Additional sections would continue here with similar enhancements -->
+
+      </main>
+
+        <!-- Help & Support Section -->
+        <section id="helpSupportSection" class="px-4 pt-6 pb-16 section-hidden">
+          <h2 class="text-2xl font-bold mb-6">Help & Support</h2>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Contact Us</h3>
+            <p class="text-gray-300 mb-4">Have questions about our services or need assistance? Our team is here to help.</p>
+            
+            <div class="space-y-4">
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-phone text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Phone</h4>
+                  <p class="text-gray-300">+27 74 629 7208</p>
+                  <p class="text-sm text-gray-400">Monday-Friday, 8am-6pm</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-envelope text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Email</h4>
+                  <p class="text-gray-300">info@vango.co.za</p>
+                  <p class="text-sm text-gray-400">We respond within 24 hours</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-map-marker-alt text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Address</h4>
+                  <p class="text-gray-300">490 Phase 3, Itsoseng Extension,</p>
+                  <p class="text-gray-300">Mabopane, 0190,</p>
+                  <p class="text-gray-300">South Africa</p>
+                </div>
+              </div>
+              
+              <div class="flex items-center">
+                <div class="area-icon">
+                  <i class="fas fa-clock text-white"></i>
+                </div>
+                <div>
+                  <h4 class="font-semibold">Business Hours</h4>
+                  <p class="text-gray-300">Monday-Friday: 8am-6pm</p>
+                  <p class="text-gray-300">Saturday: 9am-3pm</p>
+                  <p class="text-gray-300">Sunday: Closed</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6 mb-6">
+            <h3 class="text-xl font-semibold mb-4">Send Us a Message</h3>
+            
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium mb-1">Full Name</label>
+                <input type="text" class="glass-input w-full px-4 py-2" placeholder="Your full name">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-1">Email Address</label>
+                <input type="email" class="glass-input w-full px-4 py-2" placeholder="Your email address">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-1">Phone Number</label>
+                <input type="tel" class="glass-input w-full px-4 py-2" placeholder="Your phone number">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-1">Subject</label>
+                <input type="text" class="glass-input w-full px-4 py-2" placeholder="Subject of your message">
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium mb-1">How can we help you?</label>
+                <textarea class="glass-input w-full px-4 py-2" rows="4" placeholder="Let us know how we can assist you..."></textarea>
+              </div>
+              
+              <button class="glass-button bg-accent text-white w-full py-2">Send Message</button>
+            </div>
+          </div>
+          
+          <div class="glass-card p-6">
+            <h3 class="text-xl font-semibold mb-4">Support Areas</h3>
+            <p class="text-gray-300 mb-4">We're Here to Help. Get support for different parts of our service.</p>
+            
+            <div class="space-y-4">
+              <div class="glass-card p-4">
+                <h4 class="font-semibold mb-2">Customer Support</h4>
+                <p class="text-gray-300 text-sm mb-2">Need help with your account or delivery issues?</p>
+                <p class="text-accent">support@vango.co.za</p>
+              </div>
+              
+              <div class="glass-card p-4">
+                <h4 class="font-semibold mb-2">Driver Support</h4>
+                <p class="text-gray-300 text-sm mb-2">Questions about driving with VanGo or payment issues?</p>
+                <p class="text-accent">drivers@vango.co.za</p>
+              </div>
+              
+              <div class="glass-card p-4">
+                <h4 class="font-semibold mb-2">Business Inquiries</h4>
+                <p class="text-gray-300 text-sm mb-2">Interested in our business solutions or partnerships?</p>
+                <p class="text-accent">business@vango.co.za</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        
+        <!-- Driver Rating Modal -->
+<div id="ratingModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+  <div class="modal-content w-full max-w-md p-6 rounded-2xl">
+    <h2 class="text-2xl font-bold mb-6 text-center">Rate Your Driver</h2>
+    <form id="ratingForm">
+      <div class="mb-4">
+        <label for="rating" class="block text-sm font-medium mb-1">Rating (1-5)</label>
+        <input type="number" id="rating" class="glass-input w-full px-4 py-2" min="1" max="5" required>
+      </div>
+      <div class="mb-4">
+        <label for="comment" class="block text-sm font-medium mb-1">Feedback (optional)</label>
+        <textarea id="comment" class="glass-input w-full px-4 py-2" rows="3"></textarea>
+      </div>
+      <button type="submit" class="glass-button bg-accent text-white w-full py-2 rounded font-semibold">Submit Rating</button>
+    </form>
+    <button onclick="closeRatingModal()" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+  </div>
+</div>
+
+<!-- Request Delivery -->
+
+
+        <div id="requestDeliveryModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+      <div class="modal-content w-full max-w-md p-6 rounded-2xl overflow-y-auto max-h-90vh relative">
+        <h2 class="text-2xl font-bold mb-6 text-center">Request Delivery</h2>
+        <form id="deliveryForm" class="delivery-form">
+          <div>
+            <label for="pickupLocation" class="block text-sm font-medium mb-1">Pickup Location</label>
+            <input type="text" id="pickupLocation" class="glass-input w-full px-4 py-3" placeholder="Enter pickup address" required>
+          </div>
+          <div>
+            <label for="deliveryLocation" class="block text-sm font-medium mb-1">Delivery Location</label>
+            <input type="text" id="deliveryLocation" class="glass-input w-full px-4 py-3" placeholder="Enter delivery address" required>
+          </div>
+          <div>
+            <label for="materialType" class="block text-sm font-medium mb-1">Material Type</label>
+            <select id="materialType" class="glass-input w-full px-4 py-3" required>
+              <option value="">Select material type</option>
+              <option value="cement">Cement</option>
+              <option value="bricks">Bricks</option>
+              <option value="timber">Timber</option>
+              <option value="metal">Metal Sheets</option>
+              <option value="tools">Tools & Equipment</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="materialWeight" class="block text-sm font-medium mb-1">Approximate Weight (kg)</label>
+            <input type="number" id="materialWeight" class="glass-input w-full px-4 py-3" placeholder="Weight in kilograms" required min="1">
+          </div>
+          <div>
+            <label for="deliveryNotes" class="block text-sm font-medium mb-1">Special Instructions</label>
+            <textarea id="deliveryNotes" class="glass-input w-full px-4 py-3" rows="3" placeholder="Any special instructions for the driver"></textarea>
+          </div>
+          <div>
+            <label for="receiptUpload" class="block text-sm font-medium mb-1">Upload Receipt (Optional)</label>
+            <input type="file" id="receiptUpload" class="glass-input w-full px-4 py-3" accept="image/*">
+          </div>
+          <div class="glass-card p-4 mt-4">
+            <h3 class="font-semibold mb-2">Estimated Cost</h3>
+            <p id="estimatedCost" class="text-accent text-xl font-bold">R 0.00</p>
+            <p class="text-gray-300 text-sm">Final cost may vary based on actual distance</p>
+          </div>
+          <button type="submit" class="glass-button w-full bg-accent text-white py-3 font-semibold mt-4">Request Delivery</button>
+        </form>
+        <button id="closeRequestModal" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+      </div>
+    </div>
+
+        <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-70 hidden z-50 flex items-center justify-center p-4" aria-hidden="true">
+      <div class="modal-content w-full max-w-md p-6 rounded-2xl relative">
+        <h2 class="text-2xl font-bold mb-6 text-center">Complete Payment</h2>
+        <div class="glass-card p-4 mb-4">
+          <h3 class="font-semibold mb-2">Order Summary</h3>
+          <div class="flex justify-between mb-1">
+            <span>Delivery Fee:</span>
+            <span id="paymentDeliveryFee">R 0.00</span>
+          </div>
+          <div class="flex justify-between mb-1">
+            <span>Tax:</span>
+            <span id="paymentTax">R 0.00</span>
+          </div>
+          <hr class="my-2 border-glass-border">
+          <div class="flex justify-between font-bold">
+            <span>Total:</span>
+            <span id="paymentTotal">R 0.00</span>
+          </div>
+        </div>
+        <div id="paypal-button-container" class="paypal-button-container"></div>
+        <button id="closePaymentModal" class="absolute top-4 right-4 text-xl text-gray-400 hover:text-white">×</button>
+      </div>
+    </div>
+
+
+
+
+      <!-- Bottom Navigation -->
+      <nav class="bottom-nav flex justify-around items-center py-3 fixed bottom-0 w-full max-w-[480px] z-40" aria-label="Main navigation">
+        <button class="nav-item text-white flex flex-col items-center" data-target="homeSection">
+          <i class="fas fa-home text-lg"></i>
+          <span class="text-xs mt-1">Home</span>
+        </button>
+        <button class="nav-item text-white flex flex-col items-center" data-target="trackDeliverySection">
+          <i class="fas fa-map-marker-alt text-lg"></i>
+          <span class="text-xs mt-1">Track</span>
+        </button>
+        <button class="nav-item text-white flex flex-col items-center" data-target="requestDeliverySection">
+          <i class="fas fa-truck-loading text-lg"></i>
+          <span class="text-xs mt-1">Request</span>
+        </button>
+        <button class="nav-item text-white flex flex-col items-center" data-target="availableDriversSection">
+          <i class="fas fa-users text-lg"></i>
+          <span class="text-xs mt-1">Drivers</span>
+        </button>
+        <button class="nav-item text-white flex flex-col items-center" data-target="profileSection">
+          <i class="fas fa-user text-lg"></i>
+          <span class="text-xs mt-1">Profile</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize Supabase with your project details
+    const SUPABASE_URL = 'https://istylegraphicx.supabase.co';
+    const SUPABASE_ANON_KEY = 'your-anon-key';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // App State Management
+    const appState = {
+      currentUser: null,
+      isLoggedIn: false,
+      currentSection: 'homeSection',
+      notifications: [],
+      deliveries: [],
+      drivers: [],
+      maps: {},
+      paymentMethods: [],
+      isLoading: true
+    };
+
+    // DOM Elements
+    const elements = {
+      welcomeLoader: document.getElementById('welcomeLoader'),
+      homeStartSection: document.getElementById('homeStartSection'),
+      mainApp: document.getElementById('mainApp'),
+      sideMenu: document.getElementById('sideMenu'),
+      overlay: document.getElementById('overlay'),
+      menuToggle: document.getElementById('menuToggle'),
+      menuClose: document.getElementById('menuClose'),
+      loginModal: document.getElementById('loginModal'),
+      registerModal: document.getElementById('registerModal'),
+      closeLoginModal: document.getElementById('closeLoginModal'),
+      closeRegisterModal: document.getElementById('closeRegisterModal'),
+      switchToRegister: document.getElementById('switchToRegister'),
+      switchToLogin: document.getElementById('switchToLogin'),
+      loginForm: document.getElementById('loginForm'),
+      registerForm: document.getElementById('registerForm'),
+      startLoginBtn: document.getElementById('startLoginBtn'),
+      startRegisterBtn: document.getElementById('startRegisterBtn'),
+      loginMenuBtn: document.getElementById('loginMenuBtn'),
+      logoutMenuBtn: document.getElementById('logoutMenuBtn'),
+      logoutBtn: document.getElementById('logoutBtn'),
+      logoutMenuItem: document.getElementById('logoutMenuItem'),
+      menuUserName: document.getElementById('menuUserName'),
+      menuUserRole: document.getElementById('menuUserRole'),
+      menuUserAvatar: document.getElementById('menuUserAvatar'),
+      profileUserName: document.getElementById('profileUserName'),
+      profileUserEmail: document.getElementById('profileUserEmail'),
+      profileUserId: document.getElementById('profileUserId'),
+      profileUserType: document.getElementById('profileUserType'),
+      profileMemberSince: document.getElementById('profileMemberSince'),
+      profileUserAvatarImg: document.getElementById('profileUserAvatarImg'),
+      navLinks: document.querySelectorAll('.nav-link'),
+      sectionButtons: document.querySelectorAll('[data-target]'),
+      toast: document.getElementById('toast'),
+      trackingCodeInput: document.getElementById('trackingCodeInput'),
+      trackDeliveryBtn: document.getElementById('trackDeliveryBtn'),
+      trackingResults: document.getElementById('trackingResults'),
+      trackingCode: document.getElementById('trackingCode'),
+      trackingStatus: document.getElementById('trackingStatus'),
+      trackingETA: document.getElementById('trackingETA'),
+      trackingProgress: document.getElementById('trackingProgress'),
+      recentDeliveries: document.getElementById('recentDeliveries'),
+      driverNotRegistered: document.getElementById('driverNotRegistered'),
+      driverOnboarding: document.getElementById('driverOnboarding'),
+      driverDashboard: document.getElementById('driverDashboard'),
+      startDriverOnboarding: document.getElementById('startDriverOnboarding'),
+      nextSteps: document.querySelectorAll('.next-step'),
+      prevSteps: document.querySelectorAll('.prev-step'),
+      submitDriverApplication: document.getElementById('submitDriverApplication'),
+      requestDeliveryBtn: document.getElementById('requestDeliveryBtn'),
+      deliveryRequestForm: document.getElementById('deliveryRequestForm'),
+      weatherWidget: document.getElementById('weatherWidget'),
+      weatherTemp: document.getElementById('weatherTemp'),
+      menuWeatherWidget: document.getElementById('menuWeatherWidget'),
+      driversLoginPrompt: document.getElementById('driversLoginPrompt'),
+      driversList: document.getElementById('driversList'),
+      signInToViewDrivers: document.getElementById('signInToViewDrivers'),
+      deliveryAreasMap: document.getElementById('deliveryAreasMap'),
+      driversMap: document.getElementById('driversMap'),
+      notificationsPanel: document.getElementById('notificationsPanel'),
+      notificationsBtn: document.getElementById('notificationsBtn'),
+      notificationsClose: document.getElementById('notificationsClose'),
+      notificationsList: document.getElementById('notificationsList'),
+      notificationCount: document.getElementById('notificationCount'),
+      editProfileModal: document.getElementById('editProfileModal'),
+      editProfileForm: document.getElementById('editProfileForm'),
+      editProfileName: document.getElementById('editProfileName'),
+      editProfileEmail: document.getElementById('editProfileEmail'),
+      editProfilePhone: document.getElementById('editProfilePhone'),
+      editProfileAddress: document.getElementById('editProfileAddress'),
+      paymentMethodsModal: document.getElementById('paymentMethodsModal'),
+      savedPaymentMethods: document.getElementById('savedPaymentMethods'),
+      addPaymentMethodForm: document.getElementById('addPaymentMethodForm'),
+      cardElement: document.getElementById('cardElement'),
+      profileImageUpload: document.getElementById('profileImageUpload'),
+      learnMoreBtn: document.getElementById('learnMoreBtn')
+    };
+
+    // Initialize the app
+    function initApp() {
+      // Set a timeout to hide the loader (fix for infinite loading)
+      setTimeout(() => {
+        elements.welcomeLoader.style.opacity = '0';
+        setTimeout(() => {
+          elements.welcomeLoader.style.display = 'none';
+          appState.isLoading = false;
+        }, 500);
+        
+        loadUserData();
+        setupEventListeners();
+        checkAuthentication();
+        generateSampleData();
+        initMaps();
+        loadWeatherData();
+      }, 2500);
+    }
+
+    // Initialize maps
+    function initMaps() {
+      // Delivery Areas Map
+      if (elements.deliveryAreasMap) {
+        appState.maps.deliveryAreas = L.map('deliveryAreasMap').setView([-25.7479, 28.2293], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(appState.maps.deliveryAreas);
+        
+        // Add markers for delivery areas
+        const deliveryAreas = [
+          {name: "Mabopane", lat: -25.5074, lng: 28.0947},
+          {name: "Ga-Rankuwa", lat: -25.6167, lng: 27.9833},
+          {name: "Soshanguve", lat: -25.5000, lng: 28.1000},
+          {name: "Klipgat", lat: -25.5333, lng: 27.8333},
+          {name: "Letlhabile", lat: -25.5500, lng: 27.9167},
+          {name: "Mmakau", lat: -25.4667, lng: 27.9667},
+          {name: "Mothotlung", lat: -25.5667, lng: 27.8833},
+          {name: "Hebron", lat: -25.4833, lng: 28.3333},
+          {name: "Erasmus", lat: -25.4500, lng: 28.2167},
+          {name: "Rosslyn", lat: -25.6333, lng: 28.1167},
+          {name: "Pretoria Town", lat: -25.7479, lng: 28.2293},
+          {name: "Winterveldt", lat: -25.3667, lng: 28.1500},
+          {name: "Kgabalatsane", lat: -25.5167, lng: 28.0667},
+          {name: "Orchards", lat: -25.7333, lng: 28.2333}
+        ];
+        
+        deliveryAreas.forEach(area => {
+          L.marker([area.lat, area.lng])
+            .addTo(appState.maps.deliveryAreas)
+            .bindPopup(area.name);
+        });
+      }
+    }
+
+    // Load weather data
+    function loadWeatherData() {
+      // Using OpenWeatherMap API (replace with your API key)
+      const weatherData = {
+        temp: 25,
+        condition: 'Sunny',
+        icon: 'fa-sun'
+      };
+      
+      if (elements.weatherWidget) {
+        elements.weatherWidget.innerHTML = `
+          <i class="fas ${weatherData.icon} text-yellow-400 text-xl"></i>
+          <span>${weatherData.temp}°C</span>
+        `;
+      }
+      
+      if (elements.menuWeatherWidget) {
+        elements.menuWeatherWidget.innerHTML = `
+          <i class="fas ${weatherData.icon} text-yellow-400"></i>
+          <span class="text-sm">Pretoria, ${weatherData.temp}°C</span>
+        `;
+      }
+    }
+
+    // Load user data from localStorage
+    function loadUserData() {
+      const userData = localStorage.getItem('vangoUser');
+      if (userData) {
+        appState.currentUser = JSON.parse(userData);
+        appState.isLoggedIn = true;
+      }
+      
+      const deliveryData = localStorage.getItem('vangoDeliveries');
+      if (deliveryData) {
+        appState.deliveries = JSON.parse(deliveryData);
+      }
+    }
+
+    // Set up all event listeners
+    function setupEventListeners() {
+      // Menu toggle
+      elements.menuToggle.addEventListener('click', toggleMenu);
+      elements.menuClose.addEventListener('click', toggleMenu);
+      elements.overlay.addEventListener('click', closeMenu);
+      
+      // Auth buttons
+      elements.startLoginBtn.addEventListener('click', () => showModal('loginModal'));
+      elements.startRegisterBtn.addEventListener('click', () => showModal('registerModal'));
+      elements.loginMenuBtn.addEventListener('click', () => {
+        closeMenu();
+        showModal('loginModal');
+      });
+      
+      // Modal controls
+      elements.closeLoginModal.addEventListener('click', () => hideModal('loginModal'));
+      elements.closeRegisterModal.addEventListener('click', () => hideModal('registerModal'));
+      elements.switchToRegister.addEventListener('click', () => {
+        hideModal('loginModal');
+        showModal('registerModal');
+      });
+      elements.switchToLogin.addEventListener('click', () => {
+        hideModal('registerModal');
+        showModal('loginModal');
+      });
+      
+      // Form submissions
+      elements.loginForm.addEventListener('submit', handleLogin);
+      elements.registerForm.addEventListener('submit', handleRegister);
+      
+      // Navigation
+      elements.navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          const target = e.target.getAttribute('data-target');
+          navigateTo(target);
+          closeMenu();
+        });
+      });
+      
+      elements.sectionButtons.forEach(button => {
+        button.addEventListener('click', (e) => {
+          const target = e.currentTarget.getAttribute('data-target');
+          navigateTo(target);
+        });
+      });
+      
+      // Logout
+      elements.logoutBtn.addEventListener('click', handleLogout);
+      elements.logoutMenuBtn.addEventListener('click', handleLogout);
+      
+      // Tracking
+      elements.trackDeliveryBtn.addEventListener('click', trackDelivery);
+      
+      // Driver onboarding
+      elements.startDriverOnboarding.addEventListener('click', startDriverOnboarding);
+      
+      // Request delivery
+      elements.requestDeliveryBtn.addEventListener('click', () => navigateTo('requestDeliverySection'));
+      
+      // Drivers section
+      elements.signInToViewDrivers.addEventListener('click', () => showModal('loginModal'));
+      
+      // Learn More button
+      elements.learnMoreBtn.addEventListener('click', () => navigateTo('learnMoreSection'));
+      
+      // Help form submission
+      const helpForm = document.getElementById('helpSupportForm');
+      if (helpForm) {
+        helpForm.addEventListener('submit', handleHelpFormSubmit);
+      }
+    }
+
+    // Handle help form submission
+    function handleHelpFormSubmit(e) {
+      e.preventDefault();
+      
+      // Get form data
+      const formData = new FormData(e.target);
+      const data = {
+        name: formData.get('name'),
+        email: formData.get('email'),
+        phone: formData.get('phone'),
+        subject: formData.get('subject'),
+        message: formData.get('message')
+      };
+      
+      // In a real app, this would send to your server or email service
+      // For demo purposes, we'll simulate sending to info@vango.co.za
+      const mailtoLink = `mailto:info@vango.co.za?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(`Name: ${data.name}\nEmail: ${data.email}\nPhone: ${data.phone}\n\nMessage: ${data.message}`)}`;
+      
+      window.location.href = mailtoLink;
+      
+      // Show success message
+      showToast('Your message has been sent to info@vango.co.za', 'success');
+      e.target.reset();
+    }
+
+    // Clear app cache
+    function clearAppCache() {
+      localStorage.removeItem('vangoDeliveries');
+      localStorage.removeItem('vangoNotifications');
+      showToast('App cache cleared successfully', 'success');
+    }
+
+    // Check authentication status and update UI
+    function checkAuthentication() {
+      if (appState.isLoggedIn) {
+        elements.homeStartSection.classList.add('hidden');
+        elements.mainApp.classList.remove('hidden');
+        updateUserUI();
+        elements.logoutMenuItem.classList.remove('hidden');
+        elements.loginMenuBtn.classList.add('hidden');
+        
+        // Show drivers list if on drivers section
+        if (appState.currentSection === 'availableDriversSection') {
+          elements.driversLoginPrompt.classList.add('hidden');
+          elements.driversList.classList.remove('hidden');
+        }
+      } else {
+        elements.homeStartSection.classList.remove('hidden');
+        elements.mainApp.classList.add('hidden');
+        elements.logoutMenuItem.classList.add('hidden');
+        elements.loginMenuBtn.classList.remove('hidden');
+        
+        // Hide drivers list if on drivers section
+        if (appState.currentSection === 'availableDriversSection') {
+          elements.driversLoginPrompt.classList.remove('hidden');
+          elements.driversList.classList.add('hidden');
+        }
+      }
+    }
+
+    // Update UI with user data
+    function updateUserUI() {
+      if (appState.currentUser) {
+        const { name, email, userId, userType, joinDate } = appState.currentUser;
+        
+        elements.menuUserName.textContent = name;
+        elements.menuUserRole.textContent = userType === 'driver' ? 'Driver' : 'Customer';
+        
+        elements.profileUserName.textContent = name;
+        elements.profileUserEmail.textContent = email;
+        elements.profileUserId.textContent = userId;
+        elements.profileUserType.textContent = userType;
+        elements.profileMemberSince.textContent = new Date(joinDate).toLocaleDateString();
+      }
+    }
+
+    // Show modal
+    function showModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.remove('hidden');
+      setTimeout(() => {
+        modal.classList.add('flex');
+      }, 10);
+    }
+
+    // Hide modal
+    function hideModal(modalId) {
+      const modal = document.getElementById(modalId);
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // Toggle side menu
+    function toggleMenu() {
+      elements.sideMenu.classList.toggle('-translate-x-full');
+      elements.overlay.classList.toggle('hidden');
+      
+      if (!elements.sideMenu.classList.contains('-translate-x-full')) {
+        elements.sideMenu.setAttribute('aria-hidden', 'false');
+        elements.menuToggle.setAttribute('aria-expanded', 'true');
+      } else {
+        elements.sideMenu.setAttribute('aria-hidden', 'true');
+        elements.menuToggle.setAttribute('aria-expanded', 'false');
+      }
+    }
+
+    // Close menu
+    function closeMenu() {
+      elements.sideMenu.classList.add('-translate-x-full');
+      elements.overlay.classList.add('hidden');
+      elements.sideMenu.setAttribute('aria-hidden', 'true');
+      elements.menuToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    // Navigate to section
+    function navigateTo(sectionId) {
+      // Hide all sections
+      document.querySelectorAll('section').forEach(section => {
+        section.classList.add('section-hidden');
+        section.classList.remove('section-visible');
+      });
+      
+      // Show target section
+      const targetSection = document.getElementById(sectionId);
+      if (targetSection) {
+        targetSection.classList.remove('section-hidden');
+        targetSection.classList.add('section-visible');
+        appState.currentSection = sectionId;
+        
+        // Update active nav item
+        document.querySelectorAll('.nav-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        document.querySelectorAll(`[data-target="${sectionId}"]`).forEach(item => {
+          item.classList.add('active');
+        });
+        
+        // Handle section-specific logic
+        if (sectionId === 'availableDriversSection') {
+          if (appState.isLoggedIn) {
+            elements.driversLoginPrompt.classList.add('hidden');
+            elements.driversList.classList.remove('hidden');
+          } else {
+            elements.driversLoginPrompt.classList.remove('hidden');
+            elements.driversList.classList.add('hidden');
+          }
+        }
+        
+        // Initialize maps if needed
+        if (sectionId === 'deliveryAreasSection' && !appState.maps.deliveryAreas) {
+          setTimeout(initMaps, 100);
+        }
+      }
+    }
+
+    // Handle login
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      
+      // Check if user exists in localStorage
+      const users = JSON.parse(localStorage.getItem('vangoUsers') || '[]');
+      const user = users.find(u => u.email === email && u.password === password);
+      
+      if (user) {
+        appState.currentUser = user;
+        appState.isLoggedIn = true;
+        localStorage.setItem('vangoUser', JSON.stringify(user));
+        checkAuthentication();
+        hideModal('loginModal');
+        showToast('Login successful!', 'success');
+      } else {
+        showToast('Invalid email or password', 'error');
+      }
+    }
+
+    // Handle register
+    function handleRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('registerName').value;
+      const email = document.getElementById('registerEmail').value;
+      const password = document.getElementById('registerPassword').value;
+      const userType = document.getElementById('registerUserType').value;
+      
+      // Check if user already exists
+      const users = JSON.parse(localStorage.getItem('vangoUsers') || '[]');
+      if (users.some(user => user.email === email)) {
+        showToast('User with this email already exists', 'error');
+        return;
+      }
+      
+      // Create new user
+      const newUser = {
+        name,
+        email,
+        password,
+        userType,
+        userId: 'VU' + Date.now(),
+        joinDate: new Date().toISOString()
+      };
+      
+      users.push(newUser);
+      localStorage.setItem('vangoUsers', JSON.stringify(users));
+      
+      appState.currentUser = newUser;
+      appState.isLoggedIn = true;
+      localStorage.setItem('vangoUser', JSON.stringify(newUser));
+      checkAuthentication();
+      hideModal('registerModal');
+      showToast('Registration successful!', 'success');
+    }
+
+    // Handle logout
+    function handleLogout() {
+      appState.currentUser = null;
+      appState.isLoggedIn = false;
+      localStorage.removeItem('vangoUser');
+      checkAuthentication();
+      closeMenu();
+      showToast('Logged out successfully', 'success');
+    }
+
+    // Track delivery
+    function trackDelivery() {
+      const trackingCode = elements.trackingCodeInput.value.trim();
+      
+      if (!trackingCode) {
+        showToast('Please enter a tracking code', 'error');
+        return;
+      }
+      
+      // Find delivery in sample data
+      const delivery = appState.deliveries.find(d => d.trackingCode === trackingCode);
+      
+      if (delivery) {
+        elements.trackingCode.textContent = delivery.trackingCode;
+        elements.trackingStatus.textContent = delivery.status;
+        elements.trackingStatus.className = 'font-medium ';
+        
+        switch(delivery.status) {
+          case 'Pending':
+            elements.trackingStatus.classList.add('text-yellow-500');
+            break;
+          case 'In Transit':
+            elements.trackingStatus.classList.add('text-accent');
+            break;
+          case 'Delivered':
+            elements.trackingStatus.classList.add('text-green-500');
+            break;
+          default:
+            elements.trackingStatus.classList.add('text-accent');
+        }
+        
+        elements.trackingETA.textContent = delivery.eta;
+        elements.trackingProgress.style.width = delivery.progress + '%';
+        elements.trackingResults.classList.remove('hidden');
+        
+        // Add to recent deliveries if not already there
+        if (!appState.currentUser.recentDeliveries) {
+          appState.currentUser.recentDeliveries = [];
+        }
+        
+        if (!appState.currentUser.recentDeliveries.includes(trackingCode)) {
+          appState.currentUser.recentDeliveries.push(trackingCode);
+          localStorage.setItem('vangoUser', JSON.stringify(appState.currentUser));
+          updateRecentDeliveries();
+        }
+      } else {
+        showToast('Tracking code not found', 'error');
+      }
+    }
+
+    // Update recent deliveries list
+    function updateRecentDeliveries() {
+      if (appState.currentUser && appState.cukrrentUser.recentDeliveries) {
+        elements.recentDeliveries.innerHTML = '';
+        
+        appState.currentUser.recentDeliveries.forEach(code => {
+          const delivery = appState.deliveries.find(d => d.trackingCode === code);
+          if (delivery) {
+            const deliveryEl = document.createElement('div');
+            deliveryEl.className = 'glass-card p-3 flex justify-between items-center';
+            deliveryEl.innerHTML = `
+              <div>
+                <div class="font-medium">${delivery.trackingCode}</div>
+                <div class="text-sm text-gray-400">To: ${delivery.destination}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm ${delivery.status === 'Delivered' ? 'text-green-500' : delivery.status === 'In Transit' ? 'text-accent' : 'text-yellow-500'}">${delivery.status}</div>
+                <div class="text-xs text-gray-400">${delivery.date}</div>
+              </div>
+            `;
+            deliveryEl.addEventListener('click', () => {
+              elements.trackingCodeInput.value = delivery.trackingCode;
+              trackDelivery();
+            });
+            elements.recentDeliveries.appendChild(deliveryEl);
+          }
+        });
+      }
+    }
+
+    // Start driver onboarding
+    function startDriverOnboarding() {
+      elements.driverNotRegistered.classList.add('hidden');
+      elements.driverOnboarding.classList.remove('hidden');
+    }
+
+    // Go to specific onboarding step
+    function goToOnboardingStep(step) {
+      document.querySelectorAll('.driver-onboarding-step').forEach(stepEl => {
+        stepEl.classList.remove('active');
+      });
+      document.querySelector(`.driver-onboarding-step[data-step="${step}"]`).classList.add('active');
+    }
+
+    // Submit driver application
+    function submitDriverApplication() {
+      // In a real app, this would submit to a server
+      // For demo, we'll just simulate success
+      elements.driverOnboarding.classList.add('hidden');
+      elements.driverDashboard.classList.remove('hidden');
+      
+      // Update user type to driver
+      appState.currentUser.userType = 'driver';
+      localStorage.setItem('vangoUser', JSON.stringify(appState.currentUser));
+      
+      // Update users array
+      const users = JSON.parse(localStorage.getItem('vangoUsers') || '[]');
+      const userIndex = users.findIndex(u => u.userId === appState.currentUser.userId);
+      if (userIndex !== -1) {
+        users[userIndex].userType = 'driver';
+        localStorage.setItem('vangoUsers', JSON.stringify(users));
+      }
+      
+      updateUserUI();
+      showToast('Driver application submitted successfully!', 'success');
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast show';
+      
+      // Add type-based styling
+      if (type === 'error') {
+        toast.style.backgroundColor = 'rgba(239, 68, 68, 0.9)';
+      } else if (type === 'success') {
+        toast.style.backgroundColor = 'rgba(16, 185, 129, 0.9)';
+      } else {
+        toast.style.backgroundColor = 'var(--glass)';
+      }
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Generate sample data for demo purposes
+    function generateSampleData() {
+      // Sample deliveries
+      if (appState.deliveries.length === 0) {
+        appState.deliveries = [
+          {
+            trackingCode: 'VAN123456',
+            status: 'In Transit',
+            eta: '25 minutes',
+            progress: 65,
+            destination: '123 Construction Site, Johannesburg',
+            date: '2023-05-15'
+          },
+          {
+            trackingCode: 'VAN789012',
+            status: 'Delivered',
+            eta: 'Delivered',
+            progress: 100,
+            destination: '456 Builder St, Pretoria',
+            date: '2023-05-10'
+          },
+          {
+            trackingCode: 'VAN345678',
+            status: 'Pending',
+            eta: '1 hour',
+            progress: 20,
+            destination: '789 Hardware Store, Cape Town',
+            date: '2023-05-18'
+          }
+        ];
+        localStorage.setItem('vangoDeliveries', JSON.stringify(appState.deliveries));
+      }
+      
+      // Update recent deliveries if user is logged in
+      if (appState.isLoggedIn && appState.currentUser.recentDeliveries) {
+        updateRecentDeliveries();
+      }
+    }
+
+    // Initialize the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

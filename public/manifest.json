@@ -1,24 +1,69 @@
 {
-  "name": "VANGO - Fast Delivery Service",
-  "short_name": "VANGO",
-  "description": "Fast, reliable delivery service connecting customers with professional drivers",
+  "name": "VanGo Delivery - Premium Hardware Material Delivery",
+  "short_name": "VanGo",
+  "description": "Reliable drivers for seamless transportation of your hardware materials",
+  "version": "1.1.0",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ff6600",
+  "background_color": "#0f172a",
+  "theme_color": "#f97316",
   "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-ZA",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
-      "src": "/icon-192.jpg",
+      "src": "/vango-favicon.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any maskable"
     },
     {
-      "src": "/icon-512.jpg",
+      "src": "/images/vango-logo.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/images/vango-logo.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Request Delivery",
+      "short_name": "Request",
+      "description": "Quickly request a new delivery",
+      "url": "/?action=request",
+      "icons": [
+        {
+          "src": "/vango-favicon.jpg",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Track Delivery",
+      "short_name": "Track",
+      "description": "Track your current deliveries",
+      "url": "/?action=track",
+      "icons": [
+        {
+          "src": "/vango-favicon.jpg",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "dir": "ltr",
+  "iarc_rating_id": "",
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }
