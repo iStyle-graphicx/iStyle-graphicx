@@ -76,24 +76,59 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
     try {
       setIsLoading(true)
 
-      // Fetch user deliveries
+      // Fetch user deliveries with driver information
       const { data: deliveries, error: deliveriesError } = await supabase
         .from("deliveries")
         .select(
           `
           *,
-          drivers!inner(
+          drivers!deliveries_driver_id_fkey(
             id,
             rating,
-            vehicle_type,
-            profiles!inner(first_name, last_name)
+            vehicle_type
           )
         `,
         )
         .eq("customer_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (deliveriesError) throw deliveriesError
+      if (deliveriesError) {
+        console.error("[v0] Error fetching deliveries:", deliveriesError)
+        throw deliveriesError
+      }
+
+      // Fetch driver profiles separately for deliveries that have drivers
+      const driverIds = deliveries?.filter((d) => d.driver_id).map((d) => d.driver_id) || []
+      let driverProfiles: Record<string, any> = {}
+
+      if (driverIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name")
+          .in("id", driverIds)
+
+        if (!profilesError && profiles) {
+          driverProfiles = profiles.reduce(
+            (acc, profile) => {
+              acc[profile.id] = profile
+              return acc
+            },
+            {} as Record<string, any>,
+          )
+        }
+      }
+
+      // Merge driver profile data with delivery data
+      const enrichedDeliveries = deliveries?.map((delivery) => ({
+        ...delivery,
+        driver: delivery.drivers
+          ? {
+              ...delivery.drivers,
+              first_name: driverProfiles[delivery.driver_id]?.first_name || "Unknown",
+              last_name: driverProfiles[delivery.driver_id]?.last_name || "Driver",
+            }
+          : undefined,
+      }))
 
       // Calculate stats
       const total = deliveries?.length || 0
@@ -126,17 +161,17 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       })
 
       // Set active deliveries
-      const activeDeliveriesData = deliveries
+      const activeDeliveriesData = enrichedDeliveries
         ?.filter((d) => ["pending", "accepted", "in_transit"].includes(d.status))
         .slice(0, 3)
         .map((delivery) => ({
           ...delivery,
-          driver: delivery.drivers
+          driver: delivery.driver
             ? {
-                first_name: delivery.drivers.profiles.first_name,
-                last_name: delivery.drivers.profiles.last_name,
-                rating: delivery.drivers.rating,
-                vehicle_type: delivery.drivers.vehicle_type,
+                first_name: delivery.driver.first_name,
+                last_name: delivery.driver.last_name,
+                rating: delivery.driver.rating,
+                vehicle_type: delivery.driver.vehicle_type,
               }
             : undefined,
         }))
@@ -144,12 +179,12 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       setActiveDeliveries(activeDeliveriesData || [])
 
       // Set recent activity (last 5 deliveries)
-      setRecentActivity(deliveries?.slice(0, 5) || [])
+      setRecentActivity(enrichedDeliveries?.slice(0, 5) || [])
     } catch (error) {
-      console.error("Error fetching dashboard data:", error)
+      console.error("[v0] Error fetching dashboard data:", error)
       toast({
         title: "Error",
-        description: "Failed to load dashboard data",
+        description: error instanceof Error ? error.message : "Failed to load dashboard data",
         variant: "destructive",
       })
     } finally {

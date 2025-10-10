@@ -6,10 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { User, Edit, Save, X, Phone, Mail, Calendar, Star, Package, History, Settings } from "lucide-react"
+import { User, Edit, Save, X, Phone, Mail, Calendar, Star, Package, History, Settings, Shield } from "lucide-react"
 import { ProfileAvatarUpload } from "@/components/profile-avatar-upload"
 import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
 import { ProfileVerificationStatus } from "@/components/profile-verification-status"
+import { DriverProfileForm } from "@/components/driver-profile-form"
 
 interface ProfileSectionProps {
   user: any
@@ -22,6 +23,8 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [deliveryStats, setDeliveryStats] = useState({ total: 0, pending: 0, completed: 0, rating: 0 })
   const [showAddPayment, setShowAddPayment] = useState(false)
+  const [showDriverForm, setShowDriverForm] = useState(false)
+  const [driverData, setDriverData] = useState<any>(null)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -30,7 +33,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
       fetchProfile()
       fetchDeliveryStats()
     } else {
-      // Set sample data for non-authenticated users
       setProfile({
         first_name: "John",
         last_name: "Doe",
@@ -47,11 +49,14 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
 
     if (data) {
       setProfile(data)
+      if (data.user_type === "driver") {
+        const { data: driverInfo } = await supabase.from("drivers").select("*").eq("id", user.id).single()
+        setDriverData(driverInfo)
+      }
     }
   }
 
   const fetchDeliveryStats = async () => {
-    // Fetch delivery statistics
     const { data: deliveries, error: deliveryError } = await supabase
       .from("deliveries")
       .select("status")
@@ -71,7 +76,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         { total: 0, pending: 0, completed: 0, rating: 0 },
       )
 
-      // Fetch average rating
       const { data: ratings } = await supabase
         .from("ratings")
         .select("rating")
@@ -114,7 +118,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         setIsEditing(false)
       }
     } else {
-      // For non-authenticated users, just show success
       toast({
         title: "Success",
         description: "Profile updated successfully",
@@ -128,12 +131,33 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
   const handleCancelEdit = () => {
     setIsEditing(false)
     if (user) {
-      fetchProfile() // Reset to original data
+      fetchProfile()
     }
   }
 
   const handleAvatarUpdate = (url: string) => {
     setProfile({ ...profile, avatar_url: url })
+  }
+
+  const handleDriverProfileComplete = () => {
+    setShowDriverForm(false)
+    fetchProfile()
+    toast({
+      title: "Profile Submitted",
+      description: "Your driver profile has been submitted for verification",
+    })
+  }
+
+  if (user && profile?.user_type === "driver" && showDriverForm) {
+    return (
+      <div className="px-4 pt-6 pb-16">
+        <DriverProfileForm
+          userId={user.id}
+          onComplete={handleDriverProfileComplete}
+          onCancel={() => setShowDriverForm(false)}
+        />
+      </div>
+    )
   }
 
   if (!user && !profile) {
@@ -170,7 +194,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         )}
       </div>
 
-      {/* Profile Completion Banner */}
       {user && (
         <ProfileCompletionBanner
           user={user}
@@ -180,7 +203,31 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         />
       )}
 
-      {/* Profile Header */}
+      {user &&
+        profile?.user_type === "driver" &&
+        (!driverData || !driverData.verification_status || driverData.verification_status === "pending") && (
+          <Card className="bg-orange-500/10 backdrop-blur-md border-orange-500/30">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-orange-500 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white mb-1">Complete Your Driver Profile</h3>
+                  <p className="text-sm text-gray-300 mb-3">
+                    To start accepting deliveries, you need to complete your driver profile and submit required
+                    documents for verification.
+                  </p>
+                  <Button
+                    onClick={() => setShowDriverForm(true)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white"
+                  >
+                    Complete Driver Profile
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
@@ -254,7 +301,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Account Information */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -289,10 +335,8 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Verification Status */}
       {user && <ProfileVerificationStatus userId={user.id} userType={profile?.user_type || "customer"} />}
 
-      {/* Delivery Statistics */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -324,12 +368,20 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Quick Actions */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white">Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          {profile?.user_type === "driver" && (
+            <Button
+              onClick={() => setShowDriverForm(true)}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              Update Driver Profile & Documents
+            </Button>
+          )}
           <Button
             onClick={() => setIsEditing(true)}
             className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center gap-2"
