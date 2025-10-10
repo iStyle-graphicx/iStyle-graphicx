@@ -26,7 +26,7 @@ export function VangoLogo({ size = "md", variant = "full", className }: VangoLog
   if (variant === "icon") {
     return (
       <div className={cn("flex items-center justify-center", className)}>
-        <img src="/images/vango-logo-new.svg" alt="Vango" className={cn(sizeClasses[size], "w-auto")} />
+        <img src="/vango-logo.jpg" alt="VanGo" className={cn(sizeClasses[size], "w-auto object-contain")} />
       </div>
     )
   }
@@ -41,7 +41,7 @@ export function VangoLogo({ size = "md", variant = "full", className }: VangoLog
 
   return (
     <div className={cn("flex items-center", className)}>
-      <img src="/images/vango-logo-new.svg" alt="Vango" className={cn(sizeClasses[size], "w-auto")} />
+      <img src="/vango-logo.jpg" alt="VanGo" className={cn(sizeClasses[size], "w-auto object-contain")} />
     </div>
   )
 }

@@ -4,7 +4,9 @@ export const runtime = "edge"
 export const size = { width: 180, height: 180 }
 export const contentType = "image/png"
 
-export default function AppleIcon() {
+export default async function AppleIcon() {
+  const logoUrl = new URL("/vango-logo.jpg", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000")
+
   return new ImageResponse(
     <div
       style={{
@@ -13,40 +15,18 @@ export default function AppleIcon() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #f97316 0%, #ea580c 100%)",
+        background: "white",
       }}
     >
-      <div
+      <img
+        src={logoUrl.toString() || "/placeholder.svg"}
+        alt="VanGo"
         style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
+          width: "90%",
+          height: "90%",
+          objectFit: "contain",
         }}
-      >
-        <svg width="120" height="120" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M3 6h18v12H3V6z"
-            fill="white"
-            stroke="white"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path d="M3 6l9 6 9-6" stroke="#f97316" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <div
-          style={{
-            fontSize: 32,
-            fontWeight: "bold",
-            color: "white",
-            marginTop: 8,
-            fontFamily: "system-ui",
-          }}
-        >
-          VanGo
-        </div>
-      </div>
+      />
     </div>,
     {
       ...size,

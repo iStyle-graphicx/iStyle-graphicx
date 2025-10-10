@@ -60,8 +60,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} antialiased dark`}>
       <head>
-        <link rel="icon" type="image/x-icon" href="/images/vango-favicon.jpg" />
-        <link rel="apple-touch-icon" href="/images/vango-logo.png" />
+        <link rel="icon" type="image/jpeg" href="/vango-logo.jpg" />
+        <link rel="apple-touch-icon" href="/vango-logo.jpg" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#f97316" />
         <meta name="msapplication-TileColor" content="#f97316" />
@@ -72,9 +72,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
 
-        {/* Preload critical resources */}
-        <link rel="preload" href="/images/vango-logo-new.svg" as="image" />
-        <link rel="preload" href="/images/vango-favicon.jpg" as="image" />
+        <link rel="preload" href="/vango-logo.jpg" as="image" />
 
         {/* DNS prefetch for external resources */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
