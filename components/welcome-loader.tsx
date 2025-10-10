@@ -4,7 +4,11 @@ import { useState, useEffect } from "react"
 import { VangoLogo } from "@/components/vango-logo"
 import { Truck, Package, MapPin } from "lucide-react"
 
-export function WelcomeLoader() {
+interface WelcomeLoaderProps {
+  onComplete?: () => void
+}
+
+export function WelcomeLoader({ onComplete }: WelcomeLoaderProps) {
   const [progress, setProgress] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
   const [currentTip, setCurrentTip] = useState(0)
@@ -21,11 +25,14 @@ export function WelcomeLoader() {
         if (prev >= 100) {
           clearInterval(timer)
           setIsComplete(true)
+          setTimeout(() => {
+            onComplete?.()
+          }, 500)
           return 100
         }
-        return prev + 2
+        return prev + 4
       })
-    }, 25)
+    }, 30)
 
     const tipTimer = setInterval(() => {
       setCurrentTip((prev) => (prev + 1) % loadingTips.length)
@@ -35,7 +42,7 @@ export function WelcomeLoader() {
       clearInterval(timer)
       clearInterval(tipTimer)
     }
-  }, [])
+  }, [onComplete])
 
   const CurrentIcon = loadingTips[currentTip].icon
 

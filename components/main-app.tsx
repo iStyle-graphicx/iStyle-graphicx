@@ -16,7 +16,6 @@ import { ServicesSection } from "@/components/sections/services-section"
 import { DeliveryAreasSection } from "@/components/sections/delivery-areas-section"
 import { SettingsSection } from "@/components/sections/settings-section"
 import { HelpSupportSection } from "@/components/sections/help-support-section"
-import { NotificationsSection } from "@/components/sections/notifications-section"
 import { LearnMoreSection } from "@/components/sections/learn-more-section"
 import { TermsSection } from "@/components/sections/terms-section"
 import { PrivacySection } from "@/components/sections/privacy-section"
@@ -33,6 +32,9 @@ import { useHapticFeedback } from "@/components/mobile/haptic-feedback"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { EmailVerificationBanner } from "@/components/email-verification-banner"
 import { useAuth } from "@/components/auth-provider"
+import { NotificationsCenter } from "@/components/notifications-center"
+import { DriverVerificationDashboard } from "@/components/admin/driver-verification-dashboard"
+import { createClient } from "@/lib/supabase/client"
 
 interface MainAppProps {
   onLogout: () => void
@@ -47,11 +49,12 @@ export function MainApp({ onLogout }: MainAppProps) {
   const [currentUser, setCurrentUser] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const performanceMonitor = PerformanceMonitor.getInstance()
   const haptic = useHapticFeedback()
   const isMobile = useIsMobile()
-  const { needsEmailVerification } = useAuth()
+  const { needsEmailVerification, user: authUser } = useAuth()
 
   useEffect(() => {
     performanceMonitor.startTiming("app-initialization")
@@ -69,6 +72,19 @@ export function MainApp({ onLogout }: MainAppProps) {
     setIsLoading(false)
     performanceMonitor.endTiming("app-initialization")
   }, [performanceMonitor])
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      checkAdminStatus(currentUser.id)
+    }
+  }, [currentUser])
+
+  const checkAdminStatus = async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from("admin_roles").select("role").eq("user_id", currentUser?.id).single()
+
+    setIsAdmin(!!data)
+  }
 
   const handleLogout = () => {
     localStorage.removeItem("vangoUser")
@@ -209,7 +225,20 @@ export function MainApp({ onLogout }: MainAppProps) {
       case "notificationsSection":
         return (
           <ErrorBoundary>
-            <NotificationsSection user={currentUser} />
+            <NotificationsCenter userId={currentUser?.id} />
+          </ErrorBoundary>
+        )
+      case "adminDashboard":
+        return isAdmin ? (
+          <ErrorBoundary>
+            <DriverVerificationDashboard />
+          </ErrorBoundary>
+        ) : (
+          <ErrorBoundary>
+            <div className="px-4 pt-6 pb-16">
+              <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
+              <p className="text-gray-300">You don't have permission to access this section.</p>
+            </div>
           </ErrorBoundary>
         )
       case "learnMoreSection":

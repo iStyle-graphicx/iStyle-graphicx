@@ -16,8 +16,11 @@ import {
   ScrollText,
   Shield,
   Copyright,
+  ShieldCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useEffect, useState } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 interface SideMenuProps {
   isOpen: boolean
@@ -29,6 +32,21 @@ interface SideMenuProps {
 }
 
 export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, onLogout }: SideMenuProps) {
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    if (user?.id) {
+      checkAdminStatus()
+    }
+  }, [user])
+
+  const checkAdminStatus = async () => {
+    const supabase = createClient()
+    const { data } = await supabase.from("admin_roles").select("role").eq("user_id", user.id).single()
+
+    setIsAdmin(!!data)
+  }
+
   const menuItems = [
     { id: "homeSection", label: "Home", icon: Home },
     { id: "profileSection", label: "Profile", icon: User },
@@ -36,6 +54,7 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
     { id: "deliveryHistorySection", label: "Delivery History", icon: History },
     { id: "driversPortalSection", label: "Drivers Portal", icon: Truck },
     { id: "notificationsSection", label: "Notifications", icon: Bell },
+    ...(isAdmin ? [{ id: "adminDashboard", label: "Admin Dashboard", icon: ShieldCheck }] : []),
     { id: "servicesSection", label: "Services", icon: Settings },
     { id: "deliveryAreasSection", label: "Delivery Areas", icon: MapPin },
     { id: "learnMoreSection", label: "Learn More", icon: BookOpen },
@@ -72,6 +91,7 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
           <div>
             <p className="font-semibold">{user?.name || "Guest User"}</p>
             <p className="text-xs text-gray-400">{user?.userType || "Not logged in"}</p>
+            {isAdmin && <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Admin</span>}
           </div>
         </div>
         <div className="text-sm text-gray-300">

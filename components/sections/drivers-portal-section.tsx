@@ -3,13 +3,12 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { Truck, CheckCircle, MapPin, Star, DollarSign, User, Car } from "lucide-react"
+import { DriverProfileForm } from "@/components/driver-profile-form"
+import { DriverAvailabilityToggle } from "@/components/driver-availability-toggle"
+import { ProfileVerificationStatus } from "@/components/profile-verification-status"
 
 interface DriversPortalSectionProps {
   user: any
@@ -110,10 +109,10 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
       <div className="px-4 pt-6 pb-16 space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-white">Driver Dashboard</h2>
-          <Badge className={`${driverData.is_online ? "bg-green-500" : "bg-gray-500"} text-white`}>
-            {driverData.is_online ? "Online" : "Offline"}
-          </Badge>
+          <DriverAvailabilityToggle driverId={user.id} />
         </div>
+
+        <ProfileVerificationStatus userId={user.id} userType="driver" />
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <Card className="bg-white/10 backdrop-blur-md border-white/20">
@@ -186,7 +185,6 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
     <div className="px-4 pt-6 pb-16 space-y-6">
       <h2 className="text-2xl font-bold mb-6 text-white">Drivers Portal</h2>
 
-      {/* Available Drivers Map */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
@@ -288,7 +286,6 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Driver Registration */}
       {!showOnboarding ? (
         <Card className="bg-white/10 backdrop-blur-md border-white/20">
           <CardContent className="p-6 text-center">
@@ -306,138 +303,14 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
           </CardContent>
         </Card>
       ) : (
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardHeader>
-            <CardTitle className="text-white">Driver Registration - Step {currentStep} of 2</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form id="driverForm" className="space-y-4">
-              {currentStep === 1 ? (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName" className="text-white">
-                        First Name
-                      </Label>
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        className="bg-slate-700 border-slate-600 text-white"
-                        placeholder="Your first name"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName" className="text-white">
-                        Last Name
-                      </Label>
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        className="bg-slate-700 border-slate-600 text-white"
-                        placeholder="Your last name"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="phone" className="text-white">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      type="tel"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="Your phone number"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="accountNumber" className="text-white">
-                      Bank Account Number
-                    </Label>
-                    <Input
-                      id="accountNumber"
-                      name="accountNumber"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="Your bank account number"
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2"
-                  >
-                    Next: Vehicle Information
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <Label htmlFor="vehicleType" className="text-white">
-                      Vehicle Type
-                    </Label>
-                    <Select name="vehicleType">
-                      <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                        <SelectValue placeholder="Select Vehicle Type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-700 border-slate-600">
-                        <SelectItem value="pickup">Pickup Truck</SelectItem>
-                        <SelectItem value="van">Van/Minivan</SelectItem>
-                        <SelectItem value="light">Light Truck</SelectItem>
-                        <SelectItem value="heavy">Heavy Duty Truck</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="licensePlate" className="text-white">
-                      License Plate Number
-                    </Label>
-                    <Input
-                      id="licensePlate"
-                      name="licensePlate"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="e.g. ABC 123 GP"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="driversLicense" className="text-white">
-                      Driver's License Number
-                    </Label>
-                    <Input
-                      id="driversLicense"
-                      name="driversLicense"
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="Your driver's license number"
-                      required
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => setCurrentStep(1)}
-                      variant="outline"
-                      className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
-                    >
-                      Back
-                    </Button>
-                    <Button
-                      type="button"
-                      onClick={submitDriverApplication}
-                      disabled={isLoading}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-                    >
-                      {isLoading ? "Submitting..." : "Submit Application"}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </form>
-          </CardContent>
-        </Card>
+        <DriverProfileForm
+          userId={user.id}
+          onComplete={() => {
+            setShowOnboarding(false)
+            fetchDriverData()
+          }}
+          onCancel={() => setShowOnboarding(false)}
+        />
       )}
 
       <Card className="bg-white/10 backdrop-blur-md border-white/20">

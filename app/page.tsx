@@ -12,6 +12,7 @@ import { ToastProvider } from "@/components/toast-provider"
 
 function AppContent() {
   const [isLoading, setIsLoading] = useState(true)
+  const [loaderComplete, setLoaderComplete] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [showUserTypeSelector, setShowUserTypeSelector] = useState(false)
   const [showFeatureTour, setShowFeatureTour] = useState(false)
@@ -28,6 +29,10 @@ function AppContent() {
       setIsLoading(false)
     }
   }, [authLoading])
+
+  const handleLoaderComplete = () => {
+    setLoaderComplete(true)
+  }
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false)
@@ -98,12 +103,8 @@ function AppContent() {
     },
   ]
 
-  if (authLoading) {
-    return <WelcomeLoader />
-  }
-
-  if (isLoading) {
-    return <WelcomeLoader />
+  if (authLoading || (isLoading && !loaderComplete)) {
+    return <WelcomeLoader onComplete={handleLoaderComplete} />
   }
 
   if (showOnboarding) {

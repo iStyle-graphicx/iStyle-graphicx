@@ -42,8 +42,6 @@ export const metadata: Metadata = {
     title: "VanGo - Premium Hardware Material Delivery",
     description: "Reliable drivers for seamless transportation of your hardware materials",
   },
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: "#f97316",
   applicationName: "VanGo Delivery",
   category: "business",
   classification: "Delivery & Logistics",
@@ -62,7 +60,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} antialiased dark`}>
       <head>
-        <link rel="icon" type="image/svg+xml" href="/vango-favicon.jpg" />
+        <link rel="icon" type="image/x-icon" href="/images/vango-favicon.jpg" />
+        <link rel="apple-touch-icon" href="/images/vango-logo.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#f97316" />
         <meta name="msapplication-TileColor" content="#f97316" />
@@ -75,7 +74,7 @@ export default function RootLayout({
 
         {/* Preload critical resources */}
         <link rel="preload" href="/images/vango-logo-new.svg" as="image" />
-        <link rel="preload" href="/vango-favicon.jpg" as="image" />
+        <link rel="preload" href="/images/vango-favicon.jpg" as="image" />
 
         {/* DNS prefetch for external resources */}
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />

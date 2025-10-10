@@ -4,7 +4,7 @@ import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { getWeatherData, type WeatherData } from "@/lib/weather-api"
-import { NotificationDropdown } from "@/components/notification-dropdown"
+import { NotificationBell } from "@/components/notification-bell"
 import { VangoLogo } from "@/components/vango-logo"
 
 interface HeaderProps {
@@ -52,7 +52,7 @@ export function Header({ onMenuToggle, user }: HeaderProps) {
           </div>
         </div>
 
-        {user && <NotificationDropdown />}
+        {user && <NotificationBell userId={user.id} />}
 
         <Button
           variant="ghost"
