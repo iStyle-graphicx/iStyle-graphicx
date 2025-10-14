@@ -13,8 +13,8 @@ export async function GET() {
   try {
     const API_KEY = process.env.OPENWEATHER_API_KEY
 
-    // If no API key is provided, use realistic simulated data for Pretoria
-    if (!API_KEY || API_KEY === "demo_key") {
+    if (!API_KEY || API_KEY === "demo_key" || API_KEY.length < 32) {
+      console.log("[v0] Using simulated weather data (no valid API key)")
       return NextResponse.json(getSimulatedWeatherData())
     }
 
@@ -24,8 +24,14 @@ export async function GET() {
         headers: {
           Accept: "application/json",
         },
+        next: { revalidate: 600 }, // Cache for 10 minutes
       },
     )
+
+    if (response.status === 401) {
+      console.log("[v0] Invalid OpenWeather API key, using simulated weather data")
+      return NextResponse.json(getSimulatedWeatherData())
+    }
 
     if (!response.ok) {
       throw new Error(`Weather API request failed with status: ${response.status}`)
@@ -44,8 +50,7 @@ export async function GET() {
 
     return NextResponse.json(weatherData)
   } catch (error) {
-    console.error("[v0] Failed to fetch weather data:", error)
-    // Return realistic simulated data for Pretoria
+    console.log("[v0] Using simulated weather data (API unavailable)")
     return NextResponse.json(getSimulatedWeatherData())
   }
 }

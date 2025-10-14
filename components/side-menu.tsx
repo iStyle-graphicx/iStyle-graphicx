@@ -29,9 +29,10 @@ interface SideMenuProps {
   onNavigate: (section: string) => void
   user: any
   onLogout: () => void
+  onShowAuth?: () => void
 }
 
-export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, onLogout }: SideMenuProps) {
+export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, onLogout, onShowAuth }: SideMenuProps) {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
@@ -67,6 +68,13 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
 
   const handleNavigate = (sectionId: string) => {
     onNavigate(sectionId)
+    onClose()
+  }
+
+  const handleLoginRegister = () => {
+    if (onShowAuth) {
+      onShowAuth()
+    }
     onClose()
   }
 
@@ -129,7 +137,11 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
             Logout
           </Button>
         ) : (
-          <Button variant="ghost" className="justify-start text-left py-3 px-4 text-orange-500 hover:text-orange-400">
+          <Button
+            variant="ghost"
+            className="justify-start text-left py-3 px-4 text-orange-500 hover:text-orange-400"
+            onClick={handleLoginRegister}
+          >
             <LogIn className="w-5 h-5 mr-3" />
             Login / Register
           </Button>

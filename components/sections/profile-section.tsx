@@ -15,9 +15,10 @@ import { DriverProfileForm } from "@/components/driver-profile-form"
 interface ProfileSectionProps {
   user: any
   onLogout: () => void
+  onRefreshProfile?: () => void
 }
 
-export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
+export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSectionProps) {
   const [profile, setProfile] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -32,19 +33,12 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
     if (user) {
       fetchProfile()
       fetchDeliveryStats()
-    } else {
-      setProfile({
-        first_name: "John",
-        last_name: "Doe",
-        phone: "+27 82 123 4567",
-        user_type: "customer",
-        created_at: "2023-01-15",
-      })
-      setDeliveryStats({ total: 0, pending: 0, completed: 0, rating: 0 })
     }
   }, [user])
 
   const fetchProfile = async () => {
+    if (!user?.id) return
+
     const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
 
     if (data) {
@@ -53,14 +47,18 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         const { data: driverInfo } = await supabase.from("drivers").select("*").eq("id", user.id).single()
         setDriverData(driverInfo)
       }
+    } else if (error) {
+      console.error("[v0] Error fetching profile:", error)
     }
   }
 
   const fetchDeliveryStats = async () => {
+    if (!user?.id) return
+
     const { data: deliveries, error: deliveryError } = await supabase
       .from("deliveries")
       .select("status")
-      .eq(user.user_type === "driver" ? "driver_id" : "customer_id", user.id)
+      .eq(profile?.user_type === "driver" ? "driver_id" : "customer_id", user.id)
 
     if (deliveries) {
       const stats = deliveries.reduce(
@@ -79,7 +77,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
       const { data: ratings } = await supabase
         .from("ratings")
         .select("rating")
-        .eq(user.user_type === "driver" ? "driver_id" : "customer_id", user.id)
+        .eq(profile?.user_type === "driver" ? "driver_id" : "customer_id", user.id)
 
       if (ratings && ratings.length > 0) {
         const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
@@ -91,9 +89,18 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
   }
 
   const handleSaveProfile = async () => {
+    if (!user?.id) {
+      toast({
+        title: "Error",
+        description: "Please log in to update your profile",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
-    if (user) {
+    try {
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -104,39 +111,44 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         })
         .eq("id", user.id)
 
-      if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to update profile",
-          variant: "destructive",
-        })
-      } else {
-        toast({
-          title: "Success",
-          description: "Profile updated successfully",
-        })
-        setIsEditing(false)
-      }
-    } else {
+      if (error) throw error
+
       toast({
         title: "Success",
         description: "Profile updated successfully",
       })
       setIsEditing(false)
-    }
 
-    setIsLoading(false)
+      if (onRefreshProfile) {
+        onRefreshProfile()
+      }
+    } catch (error) {
+      console.error("[v0] Error updating profile:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleCancelEdit = () => {
     setIsEditing(false)
-    if (user) {
-      fetchProfile()
-    }
+    fetchProfile()
   }
 
-  const handleAvatarUpdate = (url: string) => {
+  const handleAvatarUpdate = async (url: string) => {
     setProfile({ ...profile, avatar_url: url })
+
+    if (user?.id) {
+      await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id)
+
+      if (onRefreshProfile) {
+        onRefreshProfile()
+      }
+    }
   }
 
   const handleDriverProfileComplete = () => {
@@ -148,7 +160,22 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
     })
   }
 
-  if (user && profile?.user_type === "driver" && showDriverForm) {
+  if (!user) {
+    return (
+      <div className="px-4 pt-6 pb-16">
+        <Card className="bg-white/10 backdrop-blur-md border-white/20">
+          <CardContent className="p-8 text-center">
+            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h2 className="text-2xl font-bold mb-2 text-white">My Profile</h2>
+            <p className="text-gray-300 mb-6">Please log in to view and manage your profile.</p>
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white">Login / Register</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (profile?.user_type === "driver" && showDriverForm) {
     return (
       <div className="px-4 pt-6 pb-16">
         <DriverProfileForm
@@ -156,15 +183,6 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
           onComplete={handleDriverProfileComplete}
           onCancel={() => setShowDriverForm(false)}
         />
-      </div>
-    )
-  }
-
-  if (!user && !profile) {
-    return (
-      <div className="px-4 pt-6 pb-16">
-        <h2 className="text-2xl font-bold mb-6 text-white">My Profile</h2>
-        <p className="text-gray-300">Please log in to view your profile.</p>
       </div>
     )
   }
@@ -194,7 +212,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         )}
       </div>
 
-      {user && (
+      {profile && (
         <ProfileCompletionBanner
           user={user}
           profile={profile}
@@ -203,8 +221,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         />
       )}
 
-      {user &&
-        profile?.user_type === "driver" &&
+      {profile?.user_type === "driver" &&
         (!driverData || !driverData.verification_status || driverData.verification_status === "pending") && (
           <Card className="bg-orange-500/10 backdrop-blur-md border-orange-500/30">
             <CardContent className="p-4">
@@ -232,11 +249,11 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         <CardContent className="p-6">
           <div className="flex items-center gap-4 mb-6">
             <ProfileAvatarUpload
-              userId={user?.id || "demo"}
+              userId={user.id}
               currentAvatarUrl={profile?.avatar_url}
               onAvatarUpdate={handleAvatarUpdate}
               size="lg"
-              editable={isEditing && !!user}
+              editable={isEditing}
             />
             <div className="flex-1">
               {isEditing ? (
@@ -269,7 +286,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
                   </h3>
                   <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
                     <Mail className="w-4 h-4" />
-                    <span>{user?.email || "user@example.com"}</span>
+                    <span>{user.email}</span>
                   </div>
                   {profile?.phone && (
                     <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
@@ -301,6 +318,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
+      {/* ... existing code for Account Information, Verification Status, Statistics, and Quick Actions ... */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -314,7 +332,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
               <User className="w-4 h-4" />
               <span>User ID:</span>
             </div>
-            <span className="font-medium text-white text-sm">{user?.id?.slice(0, 8) || "ec015b97"}...</span>
+            <span className="font-medium text-white text-sm">{user.id.slice(0, 8)}...</span>
           </div>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 text-gray-400">
@@ -335,7 +353,7 @@ export function ProfileSection({ user, onLogout }: ProfileSectionProps) {
         </CardContent>
       </Card>
 
-      {user && <ProfileVerificationStatus userId={user.id} userType={profile?.user_type || "customer"} />}
+      {profile && <ProfileVerificationStatus userId={user.id} userType={profile.user_type || "customer"} />}
 
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>

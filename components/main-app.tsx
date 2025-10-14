@@ -58,20 +58,61 @@ export function MainApp({ onLogout }: MainAppProps) {
 
   useEffect(() => {
     performanceMonitor.startTiming("app-initialization")
+    const supabase = createClient()
 
-    const userData = localStorage.getItem("vangoUser")
-    if (userData) {
-      try {
-        setCurrentUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Error parsing user data:", error)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserProfile(session.user.id)
+      } else {
+        setIsLoading(false)
+      }
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[v0] Auth state changed:", event)
+
+      if (event === "SIGNED_IN" && session?.user) {
+        await fetchUserProfile(session.user.id)
+      } else if (event === "SIGNED_OUT") {
+        setCurrentUser(null)
         localStorage.removeItem("vangoUser")
       }
-    }
+    })
 
-    setIsLoading(false)
     performanceMonitor.endTiming("app-initialization")
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [performanceMonitor])
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const supabase = createClient()
+      const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+
+      if (profile) {
+        const userData = {
+          id: userId,
+          email: profile.email,
+          name: `${profile.first_name} ${profile.last_name}`,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+          phone: profile.phone,
+          userType: profile.user_type,
+          avatarUrl: profile.avatar_url,
+        }
+        setCurrentUser(userData)
+        localStorage.setItem("vangoUser", JSON.stringify(userData))
+      }
+    } catch (error) {
+      console.error("[v0] Error fetching user profile:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -79,16 +120,19 @@ export function MainApp({ onLogout }: MainAppProps) {
     }
   }, [currentUser])
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = async (userId: string) => {
     const supabase = createClient()
-    const { data } = await supabase.from("admin_roles").select("role").eq("user_id", currentUser?.id).single()
+    const { data } = await supabase.from("admin_roles").select("role").eq("user_id", userId).single()
 
     setIsAdmin(!!data)
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
     localStorage.removeItem("vangoUser")
     setCurrentUser(null)
+    setCurrentSection("homeSection")
     onLogout()
   }
 
@@ -100,14 +144,16 @@ export function MainApp({ onLogout }: MainAppProps) {
     setShowRequestModal(true)
   }
 
-  const handleAuthSuccess = () => {
-    const userData = localStorage.getItem("vangoUser")
-    if (userData) {
-      try {
-        setCurrentUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Error parsing user data after auth:", error)
-      }
+  const handleAuthSuccess = async () => {
+    const supabase = createClient()
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+
+    if (session?.user) {
+      await fetchUserProfile(session.user.id)
+      setShowAuthModal(false)
+      setCurrentSection("profileSection")
     }
   }
 
@@ -127,6 +173,10 @@ export function MainApp({ onLogout }: MainAppProps) {
   const handleRefresh = async () => {
     setIsRefreshing(true)
     haptic.medium()
+
+    if (currentUser?.id) {
+      await fetchUserProfile(currentUser.id)
+    }
 
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -158,20 +208,27 @@ export function MainApp({ onLogout }: MainAppProps) {
       onLogout: handleLogout,
       onRequestDriver: handleRequestDriver,
       onRequestDelivery: () => setShowRequestModal(true),
-      onLearnMore: handleLearnMore,
+      onLearnMore: () => setCurrentSection("learnMoreSection"),
     }
 
     switch (currentSection) {
       case "homeSection":
         return (
           <ErrorBoundary>
-            <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+            <HomeSection
+              onRequestDelivery={() => setShowRequestModal(true)}
+              onLearnMore={() => setCurrentSection("learnMoreSection")}
+            />
           </ErrorBoundary>
         )
       case "profileSection":
         return (
           <ErrorBoundary>
-            <ProfileSection user={currentUser} onLogout={handleLogout} />
+            <ProfileSection
+              user={currentUser}
+              onLogout={handleLogout}
+              onRefreshProfile={() => currentUser?.id && fetchUserProfile(currentUser.id)}
+            />
           </ErrorBoundary>
         )
       case "trackDeliverySection":
@@ -268,10 +325,18 @@ export function MainApp({ onLogout }: MainAppProps) {
       default:
         return (
           <ErrorBoundary>
-            <HomeSection onRequestDelivery={() => setShowRequestModal(true)} onLearnMore={handleLearnMore} />
+            <HomeSection
+              onRequestDelivery={() => setShowRequestModal(true)}
+              onLearnMore={() => setCurrentSection("learnMoreSection")}
+            />
           </ErrorBoundary>
         )
     }
+  }
+
+  const handleShowAuthFromMenu = () => {
+    setAuthType("login")
+    setShowAuthModal(true)
   }
 
   if (isLoading) {
@@ -295,6 +360,7 @@ export function MainApp({ onLogout }: MainAppProps) {
                 onNavigate={handleSectionChange}
                 user={currentUser}
                 onLogout={handleLogout}
+                onShowAuth={handleShowAuthFromMenu}
               />
             </ErrorBoundary>
 
