@@ -16,6 +16,8 @@ interface ErrorBoundaryProps {
   fallback?: React.ComponentType<{ error: Error; resetError: () => void }>
 }
 
+const isDevelopment = typeof window !== "undefined" && window.location.hostname === "localhost"
+
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
@@ -36,16 +38,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       errorInfo,
     })
 
-    // Log error to monitoring service in production
-    if (process.env.NODE_ENV === "production") {
-      // Add your error reporting service here
-      console.error("Production error:", {
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-        timestamp: new Date().toISOString(),
-      })
-    }
+    console.error("Error details:", {
+      error: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack,
+      timestamp: new Date().toISOString(),
+    })
   }
 
   resetError = () => {
@@ -81,7 +79,7 @@ function DefaultErrorFallback({ error, resetError }: { error: Error; resetError:
             We encountered an unexpected error. Don't worry, your data is safe.
           </p>
 
-          {process.env.NODE_ENV === "development" && (
+          {isDevelopment && (
             <details className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
               <summary className="text-red-400 text-sm cursor-pointer">Error Details</summary>
               <pre className="text-xs text-red-300 mt-2 overflow-auto max-h-32">
@@ -118,13 +116,10 @@ export function useErrorHandler() {
   return (error: Error, errorInfo?: React.ErrorInfo) => {
     console.error("Error caught by hook:", error, errorInfo)
 
-    if (process.env.NODE_ENV === "production") {
-      // Log to monitoring service
-      console.error("Production error:", {
-        error: error.message,
-        stack: error.stack,
-        timestamp: new Date().toISOString(),
-      })
-    }
+    console.error("Error details:", {
+      error: error.message,
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+    })
   }
 }

@@ -1,5 +1,8 @@
 "use client"
 
+// Client-safe development mode check
+const isDevelopment = typeof window !== "undefined" && window.location.hostname === "localhost"
+
 // Performance monitoring utilities
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor
@@ -26,12 +29,11 @@ export class PerformanceMonitor {
     const duration = performance.now() - startTime
     this.metrics.delete(label)
 
-    if (process.env.NODE_ENV === "development") {
+    if (isDevelopment) {
       console.log(`⏱️ ${label}: ${duration.toFixed(2)}ms`)
     }
 
-    // Log slow operations in production
-    if (process.env.NODE_ENV === "production" && duration > 1000) {
+    if (duration > 1000) {
       console.warn(`Slow operation detected: ${label} took ${duration.toFixed(2)}ms`)
     }
 
@@ -57,10 +59,8 @@ export class PerformanceMonitor {
 
 // Web Vitals monitoring
 export function reportWebVitals(metric: any) {
-  if (process.env.NODE_ENV === "production") {
-    // Send to analytics service
-    console.log("Web Vital:", metric)
-  }
+  // Always log web vitals
+  console.log("Web Vital:", metric)
 }
 
 // Memory usage monitoring

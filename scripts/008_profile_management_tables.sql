@@ -28,17 +28,7 @@ CREATE TABLE IF NOT EXISTS public.notification_preferences (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create payment methods table
-CREATE TABLE IF NOT EXISTS public.payment_methods (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL, -- 'mastercard', 'visa', 'paypal', 'bank_transfer'
-    details JSONB NOT NULL, -- Store encrypted payment details
-    is_default BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Removed duplicate payment_methods table creation (already exists in script 001)
 
 -- Create billing history table
 CREATE TABLE IF NOT EXISTS public.billing_history (
@@ -69,57 +59,53 @@ CREATE TABLE IF NOT EXISTS public.ratings (
 -- Add RLS policies for user_verifications
 ALTER TABLE public.user_verifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_verifications_select_own" ON public.user_verifications;
 CREATE POLICY "user_verifications_select_own" ON public.user_verifications
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "user_verifications_insert_own" ON public.user_verifications;
 CREATE POLICY "user_verifications_insert_own" ON public.user_verifications
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
--- Completed the incomplete policy statement
+DROP POLICY IF EXISTS "user_verifications_update_own" ON public.user_verifications;
 CREATE POLICY "user_verifications_update_own" ON public.user_verifications
     FOR UPDATE USING (auth.uid() = user_id);
 
 -- Add RLS policies for notification_preferences
 ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "notification_preferences_select_own" ON public.notification_preferences;
 CREATE POLICY "notification_preferences_select_own" ON public.notification_preferences
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "notification_preferences_insert_own" ON public.notification_preferences;
 CREATE POLICY "notification_preferences_insert_own" ON public.notification_preferences
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "notification_preferences_update_own" ON public.notification_preferences;
 CREATE POLICY "notification_preferences_update_own" ON public.notification_preferences
     FOR UPDATE USING (auth.uid() = user_id);
 
--- Add RLS policies for payment_methods
-ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "payment_methods_select_own" ON public.payment_methods
-    FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "payment_methods_insert_own" ON public.payment_methods
-    FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "payment_methods_update_own" ON public.payment_methods
-    FOR UPDATE USING (auth.uid() = user_id);
-
-CREATE POLICY "payment_methods_delete_own" ON public.payment_methods
-    FOR DELETE USING (auth.uid() = user_id);
+-- Removed duplicate payment_methods RLS policies (already exist in script 001)
 
 -- Add RLS policies for billing_history
 ALTER TABLE public.billing_history ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "billing_history_select_own" ON public.billing_history;
 CREATE POLICY "billing_history_select_own" ON public.billing_history
     FOR SELECT USING (auth.uid() = user_id);
 
 -- Add RLS policies for ratings
 ALTER TABLE public.ratings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ratings_select_all" ON public.ratings;
 CREATE POLICY "ratings_select_all" ON public.ratings
     FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "ratings_insert_customer" ON public.ratings;
 CREATE POLICY "ratings_insert_customer" ON public.ratings
     FOR INSERT WITH CHECK (auth.uid() = customer_id);
 
+DROP POLICY IF EXISTS "ratings_update_customer" ON public.ratings;
 CREATE POLICY "ratings_update_customer" ON public.ratings
     FOR UPDATE USING (auth.uid() = customer_id);

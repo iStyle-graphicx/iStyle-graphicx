@@ -1,5 +1,7 @@
 "use client"
 
+const isDevelopment = typeof window !== "undefined" && window.location.hostname === "localhost"
+
 // Analytics and user behavior tracking
 export class Analytics {
   private static instance: Analytics
@@ -59,15 +61,11 @@ export class Analytics {
 
     this.events.push(analyticsEvent)
 
-    // Log in development
-    if (process.env.NODE_ENV === "development") {
+    if (isDevelopment) {
       console.log("📊 Analytics Event:", analyticsEvent)
     }
 
-    // Send to analytics service in production
-    if (process.env.NODE_ENV === "production") {
-      this.sendToAnalyticsService(analyticsEvent)
-    }
+    this.sendToAnalyticsService(analyticsEvent)
 
     // Keep only last 100 events in memory
     if (this.events.length > 100) {
