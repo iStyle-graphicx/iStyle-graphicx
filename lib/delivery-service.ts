@@ -87,7 +87,7 @@ class DeliveryService {
         estimatedArrival: this.calculateEstimatedArrival(distance),
       }
     } catch (error) {
-      console.error("[v0] Error creating delivery:", error)
+      console.error("Error creating delivery:", error)
       throw error
     }
   }
@@ -116,10 +116,10 @@ class DeliveryService {
       })
 
       realtimeTracking.subscribeToDelivery(deliveryId, (update) => {
-        console.log("[v0] Delivery status updated:", update)
+        // Real-time tracking active
       })
     } catch (error) {
-      console.error("[v0] Error accepting delivery:", error)
+      console.error("Error accepting delivery:", error)
       throw error
     }
   }

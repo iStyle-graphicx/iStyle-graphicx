@@ -33,7 +33,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if Supabase is configured
     if (!isSupabaseConfigured()) {
-      console.warn("[v0] Supabase is not configured. Auth features will be limited.")
       setIsLoading(false)
       return
     }
@@ -43,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       supabase = createClient()
     } catch (error) {
-      console.error("[v0] Failed to create Supabase client:", error)
+      console.error("Failed to create Supabase client:", error)
       setIsLoading(false)
       return
     }
@@ -61,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await loadUserProfile(session.user)
         }
       } catch (error) {
-        console.error("[v0] Auth session error:", error)
+        console.error("Auth session error:", error)
       } finally {
         setIsLoading(false)
       }
@@ -72,8 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] Auth state change:", event)
-
       if (event === "SIGNED_IN" && session?.user) {
         if (!session.user.email_confirmed_at) {
           setNeedsEmailVerification(true)
@@ -106,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
 
       if (error) {
-        console.error("[v0] Error loading user profile:", error)
+        console.error("Error loading user profile:", error)
         if (error.code === "PGRST116") {
           await new Promise((resolve) => setTimeout(resolve, 2000))
           const { data: retryProfile } = await supabase.from("profiles").select("*").eq("id", supabaseUser.id).single()
@@ -122,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserData(supabaseUser, profile)
       }
     } catch (error) {
-      console.error("[v0] Error loading user profile:", error)
+      console.error("Error loading user profile:", error)
     }
   }
 
@@ -151,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null)
       setNeedsEmailVerification(false)
     } catch (error) {
-      console.error("[v0] Logout error:", error)
+      console.error("Logout error:", error)
     }
   }
 

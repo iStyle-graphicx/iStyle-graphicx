@@ -5,8 +5,6 @@ export const size = { width: 180, height: 180 }
 export const contentType = "image/png"
 
 export default async function AppleIcon() {
-  const logoUrl = new URL("/vango-logo.jpg", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000")
-
   return new ImageResponse(
     <div
       style={{
@@ -16,14 +14,15 @@ export default async function AppleIcon() {
         alignItems: "center",
         justifyContent: "center",
         background: "white",
+        borderRadius: "22.5%",
       }}
     >
       <img
-        src={logoUrl.toString() || "/placeholder.svg"}
+        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VANGO%20LOGO%201-YjIELJfx5UvFswj903JJHfMxHR3nF2.jpg"
         alt="VanGo"
         style={{
-          width: "90%",
-          height: "90%",
+          width: "85%",
+          height: "85%",
           objectFit: "contain",
         }}
       />

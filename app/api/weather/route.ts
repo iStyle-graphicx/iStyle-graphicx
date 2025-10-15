@@ -14,7 +14,6 @@ export async function GET() {
     const API_KEY = process.env.OPENWEATHER_API_KEY
 
     if (!API_KEY || API_KEY === "demo_key" || API_KEY.length < 32) {
-      console.log("[v0] Using simulated weather data (no valid API key)")
       return NextResponse.json(getSimulatedWeatherData())
     }
 
@@ -29,7 +28,6 @@ export async function GET() {
     )
 
     if (response.status === 401) {
-      console.log("[v0] Invalid OpenWeather API key, using simulated weather data")
       return NextResponse.json(getSimulatedWeatherData())
     }
 
@@ -50,7 +48,6 @@ export async function GET() {
 
     return NextResponse.json(weatherData)
   } catch (error) {
-    console.log("[v0] Using simulated weather data (API unavailable)")
     return NextResponse.json(getSimulatedWeatherData())
   }
 }

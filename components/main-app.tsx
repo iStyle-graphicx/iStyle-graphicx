@@ -72,8 +72,6 @@ export function MainApp({ onLogout }: MainAppProps) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[v0] Auth state changed:", event)
-
       if (event === "SIGNED_IN" && session?.user) {
         await fetchUserProfile(session.user.id)
       } else if (event === "SIGNED_OUT") {
@@ -109,7 +107,7 @@ export function MainApp({ onLogout }: MainAppProps) {
         localStorage.setItem("vangoUser", JSON.stringify(userData))
       }
     } catch (error) {
-      console.error("[v0] Error fetching user profile:", error)
+      console.error("Error fetching user profile:", error)
     } finally {
       setIsLoading(false)
     }

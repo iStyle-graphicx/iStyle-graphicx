@@ -23,6 +23,12 @@
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/vango-logo.jpg",
+      "sizes": "180x180",
+      "type": "image/jpeg",
+      "purpose": "apple-touch-icon"
     }
   ],
   "screenshots": [

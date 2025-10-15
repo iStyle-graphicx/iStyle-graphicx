@@ -5,9 +5,6 @@ export const size = { width: 32, height: 32 }
 export const contentType = "image/png"
 
 export default async function Icon() {
-  // Fetch the logo image
-  const logoUrl = new URL("/vango-logo.jpg", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000")
-
   return new ImageResponse(
     <div
       style={{
@@ -17,14 +14,15 @@ export default async function Icon() {
         alignItems: "center",
         justifyContent: "center",
         background: "white",
+        borderRadius: "20%",
       }}
     >
       <img
-        src={logoUrl.toString() || "/placeholder.svg"}
+        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/VANGO%20LOGO%201-YjIELJfx5UvFswj903JJHfMxHR3nF2.jpg"
         alt="VanGo"
         style={{
-          width: "100%",
-          height: "100%",
+          width: "85%",
+          height: "85%",
           objectFit: "contain",
         }}
       />
