@@ -22,6 +22,7 @@ import { PrivacySection } from "@/components/sections/privacy-section"
 import { CopyrightSection } from "@/components/sections/copyright-section"
 import { RequestDeliveryModal } from "@/components/request-delivery-modal"
 import { AuthModal } from "@/components/auth-modal"
+import { DeliveryRequestModal } from "@/components/delivery-request-modal"
 import { NotificationProvider } from "@/hooks/use-notifications"
 import { SettingsProvider } from "@/lib/contexts/settings-context"
 import { PerformanceMonitor } from "@/lib/performance"
@@ -386,11 +387,19 @@ export function MainApp({ onLogout }: MainAppProps) {
             </ErrorBoundary>
 
             <ErrorBoundary>
-              <RequestDeliveryModal
-                isOpen={showRequestModal}
-                onClose={() => setShowRequestModal(false)}
-                onShowAuth={handleShowAuth}
-              />
+              {currentUser ? (
+                <DeliveryRequestModal
+                  isOpen={showRequestModal}
+                  onClose={() => setShowRequestModal(false)}
+                  userId={currentUser.id}
+                />
+              ) : (
+                <RequestDeliveryModal
+                  isOpen={showRequestModal}
+                  onClose={() => setShowRequestModal(false)}
+                  onShowAuth={handleShowAuth}
+                />
+              )}
             </ErrorBoundary>
 
             <ErrorBoundary>
