@@ -91,21 +91,38 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
         </Button>
       </div>
 
-      <div className="p-4 border-b border-white/10">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl">
-            <User className="w-6 h-6" />
+      {user && (
+        <div className="p-4 border-b border-white/10">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl">
+              <User className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="font-semibold text-white">{user.name}</p>
+              <p className="text-xs text-gray-400">{user.userType}</p>
+              {isAdmin && <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Admin</span>}
+            </div>
           </div>
-          <div>
-            <p className="font-semibold">{user?.name || "Guest User"}</p>
-            <p className="text-xs text-gray-400">{user?.userType || "Not logged in"}</p>
-            {isAdmin && <span className="text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Admin</span>}
+          <div className="text-sm text-gray-300">
+            <span className="text-yellow-400">🌤️</span> Pretoria, 25°C
           </div>
         </div>
-        <div className="text-sm text-gray-300">
-          <span className="text-yellow-400">🌤️</span> Pretoria, 25°C
+      )}
+
+      {!user && (
+        <div className="p-4 border-b border-white/10">
+          <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4">
+            <p className="text-white font-semibold mb-2">Welcome to VanGo</p>
+            <p className="text-sm text-gray-300 mb-3">
+              Sign in to access all features and start delivering or requesting deliveries.
+            </p>
+            <Button onClick={handleLoginRegister} className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+              <LogIn className="w-4 h-4 mr-2" />
+              Login / Register
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       <nav className="flex flex-col p-4 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
         {menuItems.map((item) => {
@@ -127,7 +144,7 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
 
         <hr className="border-white/10 my-4" />
 
-        {user ? (
+        {user && (
           <Button
             variant="ghost"
             className="justify-start text-left py-3 px-4 text-red-500 hover:text-red-400"
@@ -135,15 +152,6 @@ export function SideMenu({ isOpen, onClose, currentSection, onNavigate, user, on
           >
             <LogOut className="w-5 h-5 mr-3" />
             Logout
-          </Button>
-        ) : (
-          <Button
-            variant="ghost"
-            className="justify-start text-left py-3 px-4 text-orange-500 hover:text-orange-400"
-            onClick={handleLoginRegister}
-          >
-            <LogIn className="w-5 h-5 mr-3" />
-            Login / Register
           </Button>
         )}
       </nav>
