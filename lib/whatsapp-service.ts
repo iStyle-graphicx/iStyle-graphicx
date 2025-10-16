@@ -15,12 +15,16 @@ interface SendOTPResult {
 
 export class WhatsAppService {
   private config: WhatsAppConfig | null = null
+  private isDevelopment = false
 
   constructor() {
     // Initialize Twilio configuration from environment variables
     const accountSid = process.env.TWILIO_ACCOUNT_SID
     const authToken = process.env.TWILIO_AUTH_TOKEN
     const whatsappNumber = process.env.TWILIO_WHATSAPP_NUMBER
+
+    // Check if running in development mode (localhost)
+    this.isDevelopment = typeof window !== "undefined" && window.location.hostname === "localhost"
 
     if (accountSid && authToken && whatsappNumber) {
       this.config = {
@@ -42,9 +46,9 @@ export class WhatsAppService {
 
     // Check if Twilio is configured
     if (!this.config) {
-      console.warn("Twilio not configured. OTP would be sent to:", phoneNumber, "Code:", otpCode)
       // In development, return success but log the OTP
-      if (process.env.NODE_ENV !== "production") {
+      if (this.isDevelopment) {
+        console.info(`[WhatsApp OTP] Development mode - OTP for ${phoneNumber}: ${otpCode}`)
         return {
           success: true,
           message: `Development mode: OTP is ${otpCode}`,
@@ -53,7 +57,7 @@ export class WhatsAppService {
       }
       return {
         success: false,
-        message: "WhatsApp service not configured",
+        message: "WhatsApp service not configured. Please add Twilio credentials.",
       }
     }
 
@@ -82,7 +86,7 @@ export class WhatsAppService {
         console.error("Twilio API error:", error)
         return {
           success: false,
-          message: "Failed to send OTP via WhatsApp",
+          message: error.message || "Failed to send OTP via WhatsApp",
         }
       }
 
@@ -96,13 +100,17 @@ export class WhatsAppService {
       console.error("Error sending WhatsApp OTP:", error)
       return {
         success: false,
-        message: "Failed to send OTP",
+        message: error instanceof Error ? error.message : "Failed to send OTP",
       }
     }
   }
 
   isConfigured(): boolean {
-    return this.config !== null
+    return this.config !== null || this.isDevelopment
+  }
+
+  isDevelopmentMode(): boolean {
+    return this.isDevelopment
   }
 }
 

@@ -25,14 +25,28 @@ export async function POST(request: NextRequest) {
       .from("profiles")
       .select("id")
       .eq("phone_number", phoneNumber)
-      .single()
+      .maybeSingle()
 
     if (existingProfile) {
-      return NextResponse.json({ error: "Phone number already registered" }, { status: 400 })
+      return NextResponse.json({ error: "Phone number already registered. Please login instead." }, { status: 400 })
     }
 
-    // Clean up old OTPs for this phone number
-    await supabase.from("otp_codes").delete().eq("phone_number", phoneNumber)
+    // Clean up old OTPs for this phone number (older than 10 minutes)
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+    await supabase.from("otp_codes").delete().eq("phone_number", phoneNumber).lt("created_at", tenMinutesAgo)
+
+    // Check if there's a recent OTP (within last minute to prevent spam)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString()
+    const { data: recentOTP } = await supabase
+      .from("otp_codes")
+      .select("id")
+      .eq("phone_number", phoneNumber)
+      .gte("created_at", oneMinuteAgo)
+      .maybeSingle()
+
+    if (recentOTP) {
+      return NextResponse.json({ error: "Please wait 60 seconds before requesting a new OTP" }, { status: 429 })
+    }
 
     // Generate OTP
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
@@ -43,6 +57,9 @@ export async function POST(request: NextRequest) {
       phone_number: phoneNumber,
       otp_code: otpCode,
       expires_at: expiresAt.toISOString(),
+      verified: false,
+      attempts: 0,
+      max_attempts: 5,
     })
 
     if (insertError) {
@@ -57,13 +74,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.message }, { status: 500 })
     }
 
-    return NextResponse.json({
+    // In development mode, include the OTP in the response
+    const responseData: any = {
       success: true,
-      message: "OTP sent successfully",
+      message: result.message,
       expiresIn: 600, // 10 minutes in seconds
-    })
+    }
+
+    if (whatsappService.isDevelopmentMode()) {
+      responseData.otp = otpCode // Only in development
+    }
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error("Error in send-otp:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    )
   }
 }
