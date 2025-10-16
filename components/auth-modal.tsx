@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react"
+import { AlertCircle, Eye, EyeOff, Loader2, MessageSquare } from "lucide-react"
+import { WhatsAppOTPRegistration } from "@/components/whatsapp-otp-registration"
 
 interface AuthModalProps {
   type: "login" | "register"
@@ -33,6 +34,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [showWhatsAppRegistration, setShowWhatsAppRegistration] = useState(false)
   const [resetEmail, setResetEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
@@ -191,6 +193,22 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (showWhatsAppRegistration) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="sm:max-w-md bg-slate-800 border-slate-700">
+          <WhatsAppOTPRegistration
+            onSuccess={() => {
+              onSuccess()
+              onClose()
+            }}
+            onBack={() => setShowWhatsAppRegistration(false)}
+          />
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   if (showForgotPassword) {
@@ -458,6 +476,30 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
             )}
           </Button>
         </form>
+
+        {type === "register" && (
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-slate-600" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-slate-800 px-2 text-gray-400">Or register with</span>
+            </div>
+          </div>
+        )}
+
+        {type === "register" && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowWhatsAppRegistration(true)}
+            className="w-full border-slate-600 text-white hover:bg-slate-700"
+            disabled={isLoading}
+          >
+            <MessageSquare className="w-4 h-4 mr-2 text-green-500" />
+            Register with WhatsApp
+          </Button>
+        )}
 
         <p className="text-center text-sm text-gray-300">
           {type === "login" ? "Don't have an account? " : "Already have an account? "}
