@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS driver_locations (
 -- Enable RLS
 ALTER TABLE driver_locations ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies before creating to prevent errors
+DROP POLICY IF EXISTS "Drivers can insert their own location" ON driver_locations;
+DROP POLICY IF EXISTS "Drivers can update their own location" ON driver_locations;
+DROP POLICY IF EXISTS "Users can view driver locations for their deliveries" ON driver_locations;
+
 -- RLS Policies for driver_locations
 CREATE POLICY "Drivers can insert their own location" ON driver_locations
   FOR INSERT WITH CHECK (

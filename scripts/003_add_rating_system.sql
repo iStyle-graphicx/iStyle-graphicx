@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS driver_ratings (
 -- Enable RLS
 ALTER TABLE driver_ratings ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies before creating to prevent errors
+DROP POLICY IF EXISTS "Users can view ratings for their deliveries" ON driver_ratings;
+DROP POLICY IF EXISTS "Customers can insert ratings for their deliveries" ON driver_ratings;
+
 -- RLS Policies for driver_ratings
 CREATE POLICY "Users can view ratings for their deliveries" ON driver_ratings
   FOR SELECT USING (
