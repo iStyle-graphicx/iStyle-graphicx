@@ -76,7 +76,6 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
     try {
       setIsLoading(true)
 
-      // Fetch user deliveries with driver information
       const { data: deliveries, error: deliveriesError } = await supabase
         .from("deliveries")
         .select(
@@ -93,8 +92,18 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
         .order("created_at", { ascending: false })
 
       if (deliveriesError) {
-        console.error("[v0] Error fetching deliveries:", deliveriesError)
-        throw deliveriesError
+        console.error("Error fetching deliveries:", deliveriesError)
+        // Don't throw, just show empty state
+        setStats({
+          totalDeliveries: 0,
+          activeDeliveries: 0,
+          completedDeliveries: 0,
+          totalSpent: 0,
+          averageRating: 0,
+          onTimeRate: 0,
+        })
+        setIsLoading(false)
+        return
       }
 
       // Fetch driver profiles separately for deliveries that have drivers
@@ -102,12 +111,12 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       let driverProfiles: Record<string, any> = {}
 
       if (driverIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
+        const { data: profiles } = await supabase
           .from("profiles")
           .select("id, first_name, last_name")
           .in("id", driverIds)
 
-        if (!profilesError && profiles) {
+        if (profiles) {
           driverProfiles = profiles.reduce(
             (acc, profile) => {
               acc[profile.id] = profile
@@ -145,6 +154,7 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
       const completedWithTiming = deliveries?.filter((d) => d.status === "delivered" && d.delivered_at) || []
       const onTimeDeliveries =
         completedWithTiming.filter((d) => {
+          if (!d.estimated_delivery) return true
           const estimatedTime = new Date(d.estimated_delivery).getTime()
           const actualTime = new Date(d.delivered_at).getTime()
           return actualTime <= estimatedTime
@@ -156,7 +166,7 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
         activeDeliveries: active,
         completedDeliveries: completed,
         totalSpent,
-        averageRating: Math.round(avgRating * 10) / 10, // Round to 1 decimal
+        averageRating: Math.round(avgRating * 10) / 10,
         onTimeRate: Math.round(onTimeRate),
       })
 
@@ -177,14 +187,12 @@ export function DashboardOverview({ user, onRequestDelivery }: DashboardOverview
         }))
 
       setActiveDeliveries(activeDeliveriesData || [])
-
-      // Set recent activity (last 5 deliveries)
       setRecentActivity(enrichedDeliveries?.slice(0, 5) || [])
     } catch (error) {
-      console.error("[v0] Error fetching dashboard data:", error)
+      console.error("Error fetching dashboard data:", error)
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to load dashboard data",
+        description: "Failed to load dashboard data. Please try again.",
         variant: "destructive",
       })
     } finally {

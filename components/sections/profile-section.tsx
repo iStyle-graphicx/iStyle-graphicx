@@ -4,9 +4,24 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { User, Edit, Save, X, Phone, Mail, Calendar, Star, Package, History, Settings, Shield } from "lucide-react"
+import {
+  User,
+  Edit,
+  Save,
+  X,
+  Phone,
+  Mail,
+  Calendar,
+  Star,
+  Package,
+  History,
+  Settings,
+  Shield,
+  MapPin,
+} from "lucide-react"
 import { ProfileAvatarUpload } from "@/components/profile-avatar-upload"
 import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
 import { ProfileVerificationStatus } from "@/components/profile-verification-status"
@@ -16,14 +31,14 @@ interface ProfileSectionProps {
   user: any
   onLogout: () => void
   onRefreshProfile?: () => void
+  onNavigateToSection?: (section: string) => void
 }
 
-export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSectionProps) {
+export function ProfileSection({ user, onLogout, onRefreshProfile, onNavigateToSection }: ProfileSectionProps) {
   const [profile, setProfile] = useState<any>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [deliveryStats, setDeliveryStats] = useState({ total: 0, pending: 0, completed: 0, rating: 0 })
-  const [showAddPayment, setShowAddPayment] = useState(false)
   const [showDriverForm, setShowDriverForm] = useState(false)
   const [driverData, setDriverData] = useState<any>(null)
   const { toast } = useToast()
@@ -48,16 +63,16 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
         setDriverData(driverInfo)
       }
     } else if (error) {
-      console.error("[v0] Error fetching profile:", error)
+      console.error("Error fetching profile:", error)
     }
   }
 
   const fetchDeliveryStats = async () => {
     if (!user?.id) return
 
-    const { data: deliveries, error: deliveryError } = await supabase
+    const { data: deliveries } = await supabase
       .from("deliveries")
-      .select("status")
+      .select("status, customer_rating")
       .eq(profile?.user_type === "driver" ? "driver_id" : "customer_id", user.id)
 
     if (deliveries) {
@@ -74,13 +89,9 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
         { total: 0, pending: 0, completed: 0, rating: 0 },
       )
 
-      const { data: ratings } = await supabase
-        .from("ratings")
-        .select("rating")
-        .eq(profile?.user_type === "driver" ? "driver_id" : "customer_id", user.id)
-
-      if (ratings && ratings.length > 0) {
-        const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+      const ratingsData = deliveries.filter((d) => d.customer_rating)
+      if (ratingsData.length > 0) {
+        const avgRating = ratingsData.reduce((sum, r) => sum + r.customer_rating, 0) / ratingsData.length
         stats.rating = Math.round(avgRating * 10) / 10
       }
 
@@ -123,7 +134,7 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
         onRefreshProfile()
       }
     } catch (error) {
-      console.error("[v0] Error updating profile:", error)
+      console.error("Error updating profile:", error)
       toast({
         title: "Error",
         description: "Failed to update profile",
@@ -217,7 +228,7 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
           user={user}
           profile={profile}
           onEditProfile={() => setIsEditing(true)}
-          onAddPayment={() => setShowAddPayment(true)}
+          onAddPayment={() => {}}
         />
       )}
 
@@ -253,31 +264,49 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
               currentAvatarUrl={profile?.avatar_url}
               onAvatarUpdate={handleAvatarUpdate}
               size="lg"
-              editable={isEditing}
+              editable={true}
             />
             <div className="flex-1">
               {isEditing ? (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label htmlFor="firstName" className="text-white text-xs mb-1">
+                        First Name
+                      </Label>
+                      <Input
+                        id="firstName"
+                        value={profile?.first_name || ""}
+                        onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                        placeholder="First Name"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName" className="text-white text-xs mb-1">
+                        Last Name
+                      </Label>
+                      <Input
+                        id="lastName"
+                        value={profile?.last_name || ""}
+                        onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                        placeholder="Last Name"
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="phone" className="text-white text-xs mb-1">
+                      Phone Number
+                    </Label>
                     <Input
-                      value={profile?.first_name || ""}
-                      onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                      placeholder="First Name"
-                      className="bg-slate-700 border-slate-600 text-white"
-                    />
-                    <Input
-                      value={profile?.last_name || ""}
-                      onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                      placeholder="Last Name"
+                      id="phone"
+                      value={profile?.phone || ""}
+                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                      placeholder="Phone Number"
                       className="bg-slate-700 border-slate-600 text-white"
                     />
                   </div>
-                  <Input
-                    value={profile?.phone || ""}
-                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                    placeholder="Phone Number"
-                    className="bg-slate-700 border-slate-600 text-white"
-                  />
                 </div>
               ) : (
                 <>
@@ -318,7 +347,6 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
         </CardContent>
       </Card>
 
-      {/* ... existing code for Account Information, Verification Status, Statistics, and Quick Actions ... */}
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
@@ -327,21 +355,35 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center py-2 border-b border-white/10">
             <div className="flex items-center gap-2 text-gray-400">
               <User className="w-4 h-4" />
               <span>User ID:</span>
             </div>
             <span className="font-medium text-white text-sm">{user.id.slice(0, 8)}...</span>
           </div>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center py-2 border-b border-white/10">
             <div className="flex items-center gap-2 text-gray-400">
               <Star className="w-4 h-4" />
               <span>Account Type:</span>
             </div>
             <span className="font-medium text-white capitalize">{profile?.user_type || "Customer"}</span>
           </div>
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center py-2 border-b border-white/10">
+            <div className="flex items-center gap-2 text-gray-400">
+              <Mail className="w-4 h-4" />
+              <span>Email:</span>
+            </div>
+            <span className="font-medium text-white text-sm">{user.email}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-white/10">
+            <div className="flex items-center gap-2 text-gray-400">
+              <Phone className="w-4 h-4" />
+              <span>Phone:</span>
+            </div>
+            <span className="font-medium text-white">{profile?.phone || "Not set"}</span>
+          </div>
+          <div className="flex justify-between items-center py-2">
             <div className="flex items-center gap-2 text-gray-400">
               <Calendar className="w-4 h-4" />
               <span>Member Since:</span>
@@ -394,7 +436,7 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
           {profile?.user_type === "driver" && (
             <Button
               onClick={() => setShowDriverForm(true)}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center gap-2"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
             >
               <Shield className="w-4 h-4" />
               Update Driver Profile & Documents
@@ -402,16 +444,29 @@ export function ProfileSection({ user, onLogout, onRefreshProfile }: ProfileSect
           )}
           <Button
             onClick={() => setIsEditing(true)}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center gap-2"
+            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
           >
             <User className="w-4 h-4" />
             Edit Profile Details
           </Button>
-          <Button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center gap-2">
+          <Button
+            onClick={() => onNavigateToSection?.("deliveryHistorySection")}
+            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+          >
             <History className="w-4 h-4" />
             View Delivery History
           </Button>
-          <Button className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center gap-2">
+          <Button
+            onClick={() => onNavigateToSection?.("deliveryAreasSection")}
+            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+          >
+            <MapPin className="w-4 h-4" />
+            View Delivery Areas
+          </Button>
+          <Button
+            onClick={() => onNavigateToSection?.("settingsSection")}
+            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+          >
             <Settings className="w-4 h-4" />
             Account Settings
           </Button>

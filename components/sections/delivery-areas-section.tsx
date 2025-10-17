@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin } from "lucide-react"
+import { InteractiveDeliveryMap } from "@/components/interactive-delivery-map"
 
 export function DeliveryAreasSection() {
   const deliveryAreas = [
@@ -25,6 +26,8 @@ export function DeliveryAreasSection() {
     <div className="px-4 pt-6 pb-16 space-y-6">
       <h2 className="text-2xl font-bold mb-6 text-white">Delivery Areas</h2>
 
+      <InteractiveDeliveryMap />
+
       <Card className="bg-white/10 backdrop-blur-md border-white/20">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-white">We Deliver To These Areas</CardTitle>
@@ -43,18 +46,6 @@ export function DeliveryAreasSection() {
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-white">Delivery Map</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 bg-slate-700 rounded-lg flex items-center justify-center">
-            <p className="text-gray-400">Interactive map coming soon</p>
-          </div>
-          <p className="text-sm text-gray-300 mt-3">Our delivery coverage across Pretoria and surrounding areas</p>
         </CardContent>
       </Card>
     </div>

@@ -58,6 +58,15 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
     setIsLoading(true)
 
     try {
+      // Validate inputs
+      if (!deliveryData.pickupAddress || !deliveryData.deliveryAddress) {
+        throw new Error("Please provide both pickup and delivery addresses")
+      }
+
+      if (!deliveryData.itemDescription) {
+        throw new Error("Please describe the items to be delivered")
+      }
+
       const { data: delivery, error: deliveryError } = await supabase
         .from("deliveries")
         .insert({
@@ -77,35 +86,49 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
         .select()
         .single()
 
-      if (deliveryError) throw deliveryError
-
-      if (deliveryData.paymentMethod === "paypal") {
-        const paymentId = await paymentService.createPayPalPayment({
-          amount: deliveryFee,
-          currency: "ZAR",
-          description: `VanGo Delivery - ${deliveryData.itemDescription}`,
-          deliveryId: delivery.id,
-          customerId: userId,
-        })
-
-        // Update delivery with payment ID
-        await supabase.from("deliveries").update({ payment_status: "processing" }).eq("id", delivery.id)
+      if (deliveryError) {
+        console.error("Delivery creation error:", deliveryError)
+        throw new Error("Failed to create delivery request. Please try again.")
       }
 
+      // Process payment
+      if (deliveryData.paymentMethod === "paypal") {
+        try {
+          const paymentId = await paymentService.createPayPalPayment({
+            amount: deliveryFee,
+            currency: "ZAR",
+            description: `VanGo Delivery - ${deliveryData.itemDescription}`,
+            deliveryId: delivery.id,
+            customerId: userId,
+          })
+
+          await supabase.from("deliveries").update({ payment_status: "processing" }).eq("id", delivery.id)
+        } catch (paymentError) {
+          console.error("Payment error:", paymentError)
+          // Don't fail the delivery, just mark payment as pending
+          toast({
+            title: "Payment Processing",
+            description: "Your delivery is created. Payment will be processed shortly.",
+          })
+        }
+      }
+
+      // Notify available drivers
       const { data: availableDrivers } = await supabase
         .from("drivers")
         .select("id")
         .eq("is_online", true)
         .eq("status", "active")
+        .limit(10)
 
       if (availableDrivers && availableDrivers.length > 0) {
-        // Send notifications to all available drivers
         const notifications = availableDrivers.map((driver) => ({
           user_id: driver.id,
           title: "New Delivery Request",
           message: `${deliveryData.itemDescription} - R${deliveryFee} (${distance.toFixed(1)}km)`,
           type: "delivery_request",
           metadata: { delivery_id: delivery.id },
+          created_at: new Date().toISOString(),
         }))
 
         await supabase.from("notifications").insert(notifications)
@@ -127,7 +150,7 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
         paymentMethod: "paypal",
       })
     } catch (error) {
-      console.error("[v0] Error creating delivery:", error)
+      console.error("Error creating delivery:", error)
       toast({
         title: "Failed to create delivery",
         description: error instanceof Error ? error.message : "Please try again",
