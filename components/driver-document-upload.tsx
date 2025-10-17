@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -93,9 +92,9 @@ export function DriverDocumentUpload({ driverId, onDocumentsUpdate }: DriverDocu
   const supabase = createClient()
 
   // Load existing documents on mount
-  useState(() => {
+  useEffect(() => {
     loadExistingDocuments()
-  })
+  }, [driverId])
 
   const loadExistingDocuments = async () => {
     try {
@@ -103,13 +102,18 @@ export function DriverDocumentUpload({ driverId, onDocumentsUpdate }: DriverDocu
         .from("user_verifications")
         .select("verification_documents")
         .eq("user_id", driverId)
-        .single()
+        .maybeSingle()
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading documents:", error)
+        return
+      }
 
       if (data?.verification_documents) {
         setUploadedDocuments(data.verification_documents as Record<string, UploadedDocument>)
       }
     } catch (error) {
-      console.error("[v0] Error loading documents:", error)
+      console.error("Error loading documents:", error)
     }
   }
 
@@ -150,36 +154,33 @@ export function DriverDocumentUpload({ driverId, onDocumentsUpdate }: DriverDocu
       }
       setUploadedDocuments(updatedDocuments)
 
-      // Save to database
-      await supabase
-        .from("user_verifications")
-        .upsert({
+      // Save to database with upsert
+      const { error: upsertError } = await supabase.from("user_verifications").upsert(
+        {
           user_id: driverId,
           verification_documents: updatedDocuments,
           updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", driverId)
+        },
+        {
+          onConflict: "user_id",
+        },
+      )
 
-      // Update verification status for this document type
-      const verificationField = `${documentType}_verified`
-      await supabase
-        .from("user_verifications")
-        .update({
-          [verificationField]: false, // Set to false until admin approves
-        })
-        .eq("user_id", driverId)
+      if (upsertError) {
+        throw new Error(`Failed to save document: ${upsertError.message}`)
+      }
 
       toast({
-        title: "Document uploaded",
+        title: "Document uploaded successfully",
         description: "Your document has been uploaded and is pending verification",
       })
 
       onDocumentsUpdate?.()
     } catch (error: any) {
-      console.error("[v0] Document upload error:", error)
+      console.error("Document upload error:", error)
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload document",
+        description: error.message || "Failed to upload document. Please try again.",
         variant: "destructive",
       })
     } finally {

@@ -195,58 +195,96 @@ export function DriverProfileForm({ userId, onComplete, onCancel }: DriverProfil
 
     try {
       // Update profile
-      const { error: profileError } = await supabase.from("profiles").upsert({
-        id: userId,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        phone: formData.phone,
-        user_type: "driver",
-        updated_at: new Date().toISOString(),
-      })
+      const { error: profileError } = await supabase.from("profiles").upsert(
+        {
+          id: userId,
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          phone: formData.phone,
+          user_type: "driver",
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "id",
+        },
+      )
 
-      if (profileError) throw profileError
+      if (profileError) {
+        console.error("Profile error:", profileError)
+        throw new Error(`Profile update failed: ${profileError.message}`)
+      }
 
       // Update or insert driver data
-      const { error: driverError } = await supabase.from("drivers").upsert({
-        id: userId,
-        vehicle_type: formData.vehicle_type,
-        vehicle_make: formData.vehicle_make,
-        vehicle_model: formData.vehicle_model,
-        vehicle_year: Number.parseInt(formData.vehicle_year),
-        vehicle_color: formData.vehicle_color,
-        vehicle_capacity: formData.vehicle_capacity,
-        license_plate: formData.license_plate,
-        drivers_license: formData.drivers_license,
-        license_expiry_date: formData.license_expiry_date,
-        pdp_number: formData.pdp_number || null,
-        pdp_expiry_date: formData.pdp_expiry_date || null,
-        insurance_provider: formData.insurance_provider,
-        insurance_policy_number: formData.insurance_policy_number,
-        insurance_expiry_date: formData.insurance_expiry_date,
-        bank_name: formData.bank_name,
-        bank_account_holder: formData.bank_account_holder,
-        account_number: formData.account_number,
-        bank_branch_code: formData.bank_branch_code,
-        emergency_contact_name: formData.emergency_contact_name,
-        emergency_contact_phone: formData.emergency_contact_phone,
-        emergency_contact_relationship: formData.emergency_contact_relationship,
-        verification_status: "documents_submitted",
-        updated_at: new Date().toISOString(),
-      })
+      const { error: driverError } = await supabase.from("drivers").upsert(
+        {
+          id: userId,
+          vehicle_type: formData.vehicle_type,
+          vehicle_make: formData.vehicle_make,
+          vehicle_model: formData.vehicle_model,
+          vehicle_year: Number.parseInt(formData.vehicle_year) || null,
+          vehicle_color: formData.vehicle_color || null,
+          vehicle_capacity: formData.vehicle_capacity || null,
+          license_plate: formData.license_plate,
+          drivers_license: formData.drivers_license,
+          license_expiry_date: formData.license_expiry_date,
+          pdp_number: formData.pdp_number || null,
+          pdp_expiry_date: formData.pdp_expiry_date || null,
+          insurance_provider: formData.insurance_provider,
+          insurance_policy_number: formData.insurance_policy_number,
+          insurance_expiry_date: formData.insurance_expiry_date,
+          bank_name: formData.bank_name,
+          bank_account_holder: formData.bank_account_holder,
+          account_number: formData.account_number,
+          bank_branch_code: formData.bank_branch_code,
+          emergency_contact_name: formData.emergency_contact_name || null,
+          emergency_contact_phone: formData.emergency_contact_phone || null,
+          emergency_contact_relationship: formData.emergency_contact_relationship || null,
+          verification_status: "documents_submitted",
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "id",
+        },
+      )
 
-      if (driverError) throw driverError
+      if (driverError) {
+        console.error("Driver error:", driverError)
+        throw new Error(`Driver profile update failed: ${driverError.message}`)
+      }
+
+      // Create or update user verification record
+      const { error: verificationError } = await supabase.from("user_verifications").upsert(
+        {
+          user_id: userId,
+          identity_verified: false,
+          drivers_license_verified: false,
+          vehicle_registration_verified: false,
+          insurance_verified: false,
+          background_check_status: "pending",
+          verification_status: "pending",
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id",
+        },
+      )
+
+      if (verificationError) {
+        console.error("Verification error:", verificationError)
+        // Don't throw here, just log - verification record is optional
+      }
 
       toast({
-        title: "Profile Submitted",
-        description: "Your driver profile has been submitted for verification",
+        title: "Profile Submitted Successfully",
+        description: "Your driver profile has been submitted for verification. You'll be notified once approved.",
       })
 
       onComplete?.()
     } catch (error: any) {
-      console.error("[v0] Error submitting driver profile:", error)
+      console.error("Error submitting driver profile:", error)
       toast({
         title: "Submission Failed",
-        description: error.message || "Failed to submit driver profile",
+        description: error.message || "Failed to submit driver profile. Please try again.",
         variant: "destructive",
       })
     } finally {
