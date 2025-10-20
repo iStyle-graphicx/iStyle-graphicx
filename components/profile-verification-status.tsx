@@ -40,8 +40,6 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
   useEffect(() => {
     if (userId && isValidUUID(userId)) {
       fetchVerificationStatus()
-    } else {
-      console.log("[v0] Invalid or missing userId:", userId)
     }
   }, [userId])
 
@@ -52,7 +50,6 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
 
   const fetchVerificationStatus = async () => {
     if (!userId || !isValidUUID(userId)) {
-      console.error("Error fetching verification status: Invalid userId provided")
       toast({
         title: "Error",
         description: "Invalid user ID. Please try logging in again.",
@@ -62,22 +59,18 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
     }
 
     try {
-      console.log("[v0] Fetching verification status for userId:", userId)
-      const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).single()
+      const { data, error } = await supabase.from("user_verifications").select("*").eq("user_id", userId).maybeSingle()
+
+      if (error) {
+        console.error("Error fetching verification status:", error)
+        await createDefaultVerificationRecord()
+        return
+      }
 
       if (data) {
         setVerificationStatus(data)
-      } else if (error) {
-        if (error.code === "PGRST116") {
-          await createDefaultVerificationRecord()
-        } else {
-          console.error("Error fetching verification status:", error)
-          toast({
-            title: "Error",
-            description: "Failed to load verification status",
-            variant: "destructive",
-          })
-        }
+      } else {
+        await createDefaultVerificationRecord()
       }
     } catch (error) {
       console.error("Unexpected error:", error)
@@ -91,23 +84,28 @@ export function ProfileVerificationStatus({ userId, userType }: ProfileVerificat
 
   const createDefaultVerificationRecord = async () => {
     if (!userId || !isValidUUID(userId)) {
-      console.error("Cannot create verification record: Invalid userId")
       return
     }
 
     try {
       const { data, error } = await supabase
         .from("user_verifications")
-        .insert({
-          user_id: userId,
-          email_verified: false,
-          phone_verified: false,
-          identity_verified: false,
-          payment_verified: false,
-          driver_license_verified: false,
-          vehicle_verified: false,
-          background_check_verified: false,
-        })
+        .upsert(
+          {
+            user_id: userId,
+            email_verified: false,
+            phone_verified: false,
+            identity_verified: false,
+            payment_verified: false,
+            driver_license_verified: false,
+            vehicle_verified: false,
+            background_check_verified: false,
+            verification_status: "pending",
+          },
+          {
+            onConflict: "user_id",
+          },
+        )
         .select()
         .single()
 
