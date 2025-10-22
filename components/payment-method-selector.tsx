@@ -12,15 +12,15 @@ import { CreditCard, Building2, Smartphone, Plus, Check } from "lucide-react"
 interface PaymentMethodSelectorProps {
   selectedMethod: string
   onMethodSelect: (methodId: string) => void
-  onAddMethod: () => void
-  amount: number
+  onAddMethod?: () => void
+  amount?: number // Made amount optional with default value
 }
 
 export function PaymentMethodSelector({
   selectedMethod,
   onMethodSelect,
   onAddMethod,
-  amount,
+  amount = 0, // Default to 0 if not provided
 }: PaymentMethodSelectorProps) {
   const [paymentMethods] = useState<PaymentMethod[]>([
     {
@@ -61,13 +61,15 @@ export function PaymentMethodSelector({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-white">Payment Method</h3>
-        <div className="text-right">
-          <div className="text-2xl font-bold text-orange-500">R{amount.toFixed(2)}</div>
-          <div className="text-sm text-gray-400">Total Amount</div>
+      {amount > 0 && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">Payment Method</h3>
+          <div className="text-right">
+            <div className="text-2xl font-bold text-orange-500">R{amount.toFixed(2)}</div>
+            <div className="text-sm text-gray-400">Total Amount</div>
+          </div>
         </div>
-      </div>
+      )}
 
       <RadioGroup value={selectedMethod} onValueChange={onMethodSelect} className="space-y-3">
         {paymentMethods.map((method) => (
@@ -118,14 +120,16 @@ export function PaymentMethodSelector({
         </CardContent>
       </Card>
 
-      <Button
-        variant="outline"
-        onClick={onAddMethod}
-        className="w-full border-slate-600 text-gray-300 hover:bg-slate-800 bg-transparent"
-      >
-        <Plus className="w-4 h-4 mr-2" />
-        Add New Payment Method
-      </Button>
+      {onAddMethod && (
+        <Button
+          variant="outline"
+          onClick={onAddMethod}
+          className="w-full border-slate-600 text-gray-300 hover:bg-slate-800 bg-transparent"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add New Payment Method
+        </Button>
+      )}
 
       {/* Payment Security Info */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">

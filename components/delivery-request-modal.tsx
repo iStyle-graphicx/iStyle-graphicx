@@ -319,7 +319,16 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
                 </Label>
                 <PaymentMethodSelector
                   selectedMethod={deliveryData.paymentMethod}
-                  onSelectMethod={(method) => setDeliveryData({ ...deliveryData, paymentMethod: method })}
+                  onMethodSelect={(method) =>
+                    setDeliveryData({ ...deliveryData, paymentMethod: method as "paypal" | "eft" })
+                  }
+                  amount={deliveryFee}
+                  onAddMethod={() => {
+                    toast({
+                      title: "Coming Soon",
+                      description: "Additional payment methods will be available soon.",
+                    })
+                  }}
                 />
               </div>
 
