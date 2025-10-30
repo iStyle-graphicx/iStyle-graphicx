@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Truck, CheckCircle, MapPin, Star, DollarSign, User, Car } from "lucide-react"
+import { Truck, CheckCircle, MapPin, Star, DollarSign, User, Car, Loader2, Search } from "lucide-react"
 import { DriverProfileForm } from "@/components/driver-profile-form"
 import { DriverAvailabilityToggle } from "@/components/driver-availability-toggle"
 import { ProfileVerificationStatus } from "@/components/profile-verification-status"
+import { useDebounce } from "@/hooks/use-debounce"
 
 interface DriversPortalSectionProps {
   user: any
@@ -16,11 +18,12 @@ interface DriversPortalSectionProps {
 
 export function DriversPortalSection({ user }: DriversPortalSectionProps) {
   const [showOnboarding, setShowOnboarding] = useState(false)
-  const [currentStep, setCurrentStep] = useState(1)
   const [availableDrivers, setAvailableDrivers] = useState<any[]>([])
   const [selectedDriver, setSelectedDriver] = useState<any>(null)
   const [driverData, setDriverData] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearch = useDebounce(searchQuery, 300)
   const { toast } = useToast()
   const supabase = createClient()
 
@@ -29,6 +32,29 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
       fetchDriverData()
       if (user.userType !== "driver") {
         fetchAvailableDrivers()
+      }
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user && user.userType !== "driver") {
+      const channel = supabase
+        .channel("drivers_updates")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "drivers",
+          },
+          () => {
+            fetchAvailableDrivers()
+          },
+        )
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(channel)
       }
     }
   }, [user])
@@ -42,58 +68,79 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
   }
 
   const fetchAvailableDrivers = async () => {
-    const { data, error } = await supabase
-      .from("drivers")
-      .select(`
-        *,
-        profiles!inner(first_name, last_name, phone)
-      `)
-      .eq("status", "active")
-      .eq("is_online", true)
-
-    if (data) {
-      // Add mock locations for Pretoria area
-      const driversWithLocations = data.map((driver, index) => ({
-        ...driver,
-        current_lat: -25.7479 + (Math.random() - 0.5) * 0.1,
-        current_lng: 28.2293 + (Math.random() - 0.5) * 0.1,
-        distance: Math.round(Math.random() * 15 + 1), // Random distance 1-15km
-      }))
-      setAvailableDrivers(driversWithLocations)
-    }
-  }
-
-  const submitDriverApplication = async () => {
     setIsLoading(true)
-    const formData = new FormData(document.getElementById("driverForm") as HTMLFormElement)
+    try {
+      const { data, error } = await supabase
+        .from("drivers")
+        .select(`
+          *,
+          profiles!inner(first_name, last_name, phone, avatar_url),
+          user_verifications!inner(
+            identity_verified,
+            drivers_license_verified,
+            vehicle_documents_verified
+          )
+        `)
+        .eq("status", "active")
+        .eq("is_online", true)
+        .eq("user_verifications.identity_verified", true)
+        .eq("user_verifications.drivers_license_verified", true)
+        .eq("user_verifications.vehicle_documents_verified", true)
+        .gte("rating", 3.0)
 
-    const driverInfo = {
-      id: user.id,
-      vehicle_type: formData.get("vehicleType"),
-      license_plate: formData.get("licensePlate"),
-      drivers_license: formData.get("driversLicense"),
-      account_number: formData.get("accountNumber"),
-      status: "pending",
+      if (error) {
+        console.error("Error fetching drivers:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load available drivers",
+          variant: "destructive",
+        })
+        return
+      }
+
+      if (data && data.length > 0) {
+        const driversWithDistance = data
+          .map((driver) => ({
+            ...driver,
+            distance:
+              driver.current_lat && driver.current_lng
+                ? calculateDistance(-25.7479, 28.2293, driver.current_lat, driver.current_lng)
+                : null,
+          }))
+          .sort((a, b) => {
+            if (a.distance && b.distance) return a.distance - b.distance
+            return b.rating - a.rating
+          })
+
+        setAvailableDrivers(driversWithDistance)
+      } else {
+        setAvailableDrivers([])
+      }
+    } catch (error) {
+      console.error("Error:", error)
+    } finally {
+      setIsLoading(false)
     }
-
-    const { error } = await supabase.from("drivers").insert(driverInfo)
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Failed to submit application",
-        variant: "destructive",
-      })
-    } else {
-      toast({
-        title: "Application Submitted",
-        description: "Your driver application has been submitted for review",
-      })
-      setShowOnboarding(false)
-      fetchDriverData()
-    }
-    setIsLoading(false)
   }
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371
+    const dLat = ((lat2 - lat1) * Math.PI) / 180
+    const dLon = ((lon2 - lon1) * Math.PI) / 180
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+    return Math.round(R * c * 10) / 10
+  }
+
+  const filteredDrivers = availableDrivers.filter((driver) => {
+    if (!debouncedSearch) return true
+    const searchLower = debouncedSearch.toLowerCase()
+    const fullName = `${driver.profiles.first_name} ${driver.profiles.last_name}`.toLowerCase()
+    const vehicleType = (driver.vehicle_type || "").toLowerCase()
+    return fullName.includes(searchLower) || vehicleType.includes(searchLower)
+  })
 
   if (!user) {
     return (
@@ -189,99 +236,157 @@ export function DriversPortalSection({ user }: DriversPortalSectionProps) {
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <MapPin className="w-5 h-5 text-orange-500" />
-            Available Drivers in Pretoria
+            Available VanGo Drivers
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-slate-800 rounded-lg p-4 mb-4 relative overflow-hidden">
-            <div className="text-center text-white mb-4">
-              <MapPin className="w-8 h-8 mx-auto mb-2 text-orange-500" />
-              <p className="text-sm">Live Driver Locations</p>
+          {availableDrivers.length > 0 && (
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by name or vehicle type..."
+                  className="pl-10 bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
             </div>
+          )}
 
-            <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
-              {availableDrivers.map((driver) => (
-                <div
-                  key={driver.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-all ${
-                    selectedDriver?.id === driver.id
-                      ? "bg-orange-500/20 border border-orange-500"
-                      : "bg-slate-700/50 hover:bg-slate-700"
-                  }`}
-                  onClick={() => setSelectedDriver(driver)}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-white">
-                          {driver.profiles.first_name} {driver.profiles.last_name}
-                        </p>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <Car className="w-3 h-3" />
-                          <span>{driver.vehicle_type}</span>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
+              <span className="ml-3 text-white">Loading available drivers...</span>
+            </div>
+          ) : filteredDrivers.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+              <p className="text-white font-semibold mb-2">
+                {searchQuery ? "No Drivers Found" : "No Drivers Available"}
+              </p>
+              <p className="text-gray-400 text-sm">
+                {searchQuery
+                  ? "Try adjusting your search terms"
+                  : "There are currently no verified drivers online in your area. Please try again later."}
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-slate-800 rounded-lg p-4 mb-4 relative overflow-hidden">
+                <div className="text-center text-white mb-4">
+                  <MapPin className="w-8 h-8 mx-auto mb-2 text-orange-500" />
+                  <p className="text-sm">
+                    {filteredDrivers.length} Verified Driver{filteredDrivers.length !== 1 ? "s" : ""} Online
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto">
+                  {filteredDrivers.map((driver) => (
+                    <div
+                      key={driver.id}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
+                        selectedDriver?.id === driver.id
+                          ? "bg-orange-500/20 border border-orange-500"
+                          : "bg-slate-700/50 hover:bg-slate-700"
+                      }`}
+                      onClick={() => setSelectedDriver(driver)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          {driver.profiles.avatar_url ? (
+                            <img
+                              src={driver.profiles.avatar_url || "/placeholder.svg"}
+                              alt={`${driver.profiles.first_name} ${driver.profiles.last_name}`}
+                              className="w-10 h-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center">
+                              <User className="w-5 h-5 text-white" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-white">
+                              {driver.profiles.first_name} {driver.profiles.last_name}
+                            </p>
+                            <div className="flex items-center gap-2 text-sm text-gray-400">
+                              <Car className="w-3 h-3" />
+                              <span>{driver.vehicle_type || "Vehicle"}</span>
+                            </div>
+                            {driver.distance && (
+                              <div className="flex items-center gap-2 text-sm text-gray-400">
+                                <MapPin className="w-3 h-3" />
+                                <span>{driver.distance}km away</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <MapPin className="w-3 h-3" />
-                          <span>{driver.distance}km away</span>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                            <span className="text-white text-sm">{driver.rating?.toFixed(1) || "5.0"}</span>
+                          </div>
+                          <div className="text-xs text-green-400 flex items-center gap-1">
+                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                            Online
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                        <span className="text-white text-sm">{driver.rating}</span>
-                      </div>
-                      <div className="text-xs text-green-400">Online</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {selectedDriver && (
-            <Card className="bg-slate-700/50 border-orange-500/30">
-              <CardContent className="p-4">
-                <h4 className="font-semibold text-white mb-3">Driver Details</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Name:</span>
-                    <span className="text-white">
-                      {selectedDriver.profiles.first_name} {selectedDriver.profiles.last_name}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Phone:</span>
-                    <span className="text-white">{selectedDriver.profiles.phone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Vehicle:</span>
-                    <span className="text-white">{selectedDriver.vehicle_type}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">License Plate:</span>
-                    <span className="text-white">{selectedDriver.license_plate}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Total Deliveries:</span>
-                    <span className="text-white">{selectedDriver.total_deliveries}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Rating:</span>
-                    <span className="text-white flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
-                      {selectedDriver.rating}
-                    </span>
-                  </div>
-                </div>
-                <Button className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white">
-                  Request This Driver
-                </Button>
-              </CardContent>
-            </Card>
+              {selectedDriver && (
+                <Card className="bg-slate-700/50 border-orange-500/30">
+                  <CardContent className="p-4">
+                    <h4 className="font-semibold text-white mb-3">Driver Details</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Name:</span>
+                        <span className="text-white">
+                          {selectedDriver.profiles.first_name} {selectedDriver.profiles.last_name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Phone:</span>
+                        <span className="text-white">{selectedDriver.profiles.phone || "Not available"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Vehicle:</span>
+                        <span className="text-white">{selectedDriver.vehicle_type || "Standard"}</span>
+                      </div>
+                      {selectedDriver.license_plate && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">License Plate:</span>
+                          <span className="text-white">{selectedDriver.license_plate}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Total Deliveries:</span>
+                        <span className="text-white">{selectedDriver.total_deliveries || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Rating:</span>
+                        <span className="text-white flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                          {selectedDriver.rating?.toFixed(1) || "5.0"}
+                        </span>
+                      </div>
+                      {selectedDriver.distance && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Distance:</span>
+                          <span className="text-white">{selectedDriver.distance}km away</span>
+                        </div>
+                      )}
+                    </div>
+                    <Button className="w-full mt-4 bg-orange-500 hover:bg-orange-600 text-white">
+                      Request This Driver
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

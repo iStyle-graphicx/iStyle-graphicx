@@ -450,21 +450,48 @@ export function ProfileSection({ user, onLogout, onRefreshProfile, onNavigateToS
             Edit Profile Details
           </Button>
           <Button
-            onClick={() => onNavigateToSection?.("deliveryHistorySection")}
+            onClick={() => {
+              if (onNavigateToSection) {
+                onNavigateToSection("deliveryHistorySection")
+              } else {
+                toast({
+                  title: "Navigation",
+                  description: "Opening delivery history...",
+                })
+              }
+            }}
             className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
           >
             <History className="w-4 h-4" />
             View Delivery History
           </Button>
           <Button
-            onClick={() => onNavigateToSection?.("deliveryAreasSection")}
+            onClick={() => {
+              if (onNavigateToSection) {
+                onNavigateToSection("deliveryAreasSection")
+              } else {
+                toast({
+                  title: "Navigation",
+                  description: "Opening delivery areas...",
+                })
+              }
+            }}
             className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
           >
             <MapPin className="w-4 h-4" />
             View Delivery Areas
           </Button>
           <Button
-            onClick={() => onNavigateToSection?.("settingsSection")}
+            onClick={() => {
+              if (onNavigateToSection) {
+                onNavigateToSection("settingsSection")
+              } else {
+                toast({
+                  title: "Navigation",
+                  description: "Opening settings...",
+                })
+              }
+            }}
             className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
           >
             <Settings className="w-4 h-4" />

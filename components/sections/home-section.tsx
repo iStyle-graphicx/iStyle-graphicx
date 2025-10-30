@@ -3,19 +3,24 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Package, Wrench, Warehouse, Zap } from "lucide-react"
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
+import { CustomerDashboard } from "@/components/dashboard/customer-dashboard"
+import { DriverDashboardEnhanced } from "@/components/dashboard/driver-dashboard-enhanced"
 import { useAuth } from "@/components/auth-provider"
 
 interface HomeSectionProps {
   onRequestDelivery: () => void
   onLearnMore: () => void
+  onNavigate?: (section: string) => void
 }
 
-export function HomeSection({ onRequestDelivery, onLearnMore }: HomeSectionProps) {
+export function HomeSection({ onRequestDelivery, onLearnMore, onNavigate }: HomeSectionProps) {
   const { user } = useAuth()
 
   if (user) {
-    return <DashboardOverview user={user} onRequestDelivery={onRequestDelivery} />
+    if (user.userType === "driver") {
+      return <DriverDashboardEnhanced user={user} onNavigate={onNavigate} />
+    }
+    return <CustomerDashboard user={user} onRequestDelivery={onRequestDelivery} onNavigate={onNavigate} />
   }
 
   return (

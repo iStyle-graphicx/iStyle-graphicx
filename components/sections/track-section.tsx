@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { Package, MapPin } from "lucide-react"
+import { realtimeTracking, type DeliveryStatusUpdate, type DeliveryLocationUpdate } from "@/lib/realtime-tracking"
+import { InteractiveMap } from "@/components/interactive-map"
+import { Package, MapPin, Truck, Clock, Navigation2, Phone } from "lucide-react"
 
 interface TrackSectionProps {
   user: any
@@ -16,19 +18,26 @@ interface TrackSectionProps {
 interface Delivery {
   id: string
   tracking_code: string
-  destination: string
-  status: "pending" | "in_transit" | "delivered" | "cancelled"
+  status: "pending" | "accepted" | "picked_up" | "in_transit" | "delivered" | "cancelled"
   created_at: string
   pickup_address: string
   delivery_address: string
-  driver_name?: string
+  pickup_lat?: number
+  pickup_lng?: number
+  delivery_lat?: number
+  delivery_lng?: number
+  driver_id?: string
   estimated_delivery?: string
+  item_description?: string
+  delivery_fee?: number
 }
 
 export function TrackSection({ user }: TrackSectionProps) {
   const [trackingCode, setTrackingCode] = useState("")
   const [recentDeliveries, setRecentDeliveries] = useState<Delivery[]>([])
   const [trackedDelivery, setTrackedDelivery] = useState<Delivery | null>(null)
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [eta, setEta] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
   const supabase = createClient()
@@ -36,44 +45,73 @@ export function TrackSection({ user }: TrackSectionProps) {
   useEffect(() => {
     if (user) {
       fetchRecentDeliveries()
-    } else {
-      // Load sample data for non-authenticated users
-      setRecentDeliveries([
-        {
-          id: "1",
-          tracking_code: "VAN123456",
-          destination: "123 Construction Site, Johannesburg",
-          status: "in_transit",
-          created_at: "2023-05-15",
-          pickup_address: "Hardware Store, Pretoria",
-          delivery_address: "123 Construction Site, Johannesburg",
-          driver_name: "John Smith",
-          estimated_delivery: "2023-05-15 16:30",
-        },
-        {
-          id: "2",
-          tracking_code: "VAN789012",
-          destination: "456 Builder St, Pretoria",
-          status: "delivered",
-          created_at: "2023-05-10",
-          pickup_address: "Cement Depot, Centurion",
-          delivery_address: "456 Builder St, Pretoria",
-          driver_name: "Sarah Johnson",
-          estimated_delivery: "2023-05-10 14:00",
-        },
-        {
-          id: "3",
-          tracking_code: "VAN345678",
-          destination: "789 Hardware Store, Cape Town",
-          status: "pending",
-          created_at: "2023-05-18",
-          pickup_address: "Steel Supplier, Durban",
-          delivery_address: "789 Hardware Store, Cape Town",
-          estimated_delivery: "2023-05-19 10:00",
-        },
-      ])
     }
   }, [user])
+
+  useEffect(() => {
+    if (!trackedDelivery) return
+
+    // Subscribe to delivery status updates
+    const statusSubscription = realtimeTracking.subscribeToDelivery(
+      trackedDelivery.id,
+      (update: DeliveryStatusUpdate) => {
+        console.log("[v0] Delivery status updated:", update)
+        setTrackedDelivery((prev) => (prev ? { ...prev, ...update } : null))
+        toast({
+          title: "Status Updated",
+          description: `Delivery is now ${update.status.replace("_", " ")}`,
+        })
+      },
+    )
+
+    // Subscribe to driver location updates if driver is assigned
+    let driverLocationSubscription: any = null
+    if (trackedDelivery.driver_id) {
+      driverLocationSubscription = realtimeTracking.subscribeToDriverLocation(
+        trackedDelivery.driver_id,
+        async (location: DeliveryLocationUpdate) => {
+          console.log("[v0] Driver location updated:", location)
+          setDriverLocation({ lat: location.latitude, lng: location.longitude })
+
+          // Calculate ETA if delivery address has coordinates
+          if (trackedDelivery.delivery_lat && trackedDelivery.delivery_lng) {
+            const calculatedEta = await realtimeTracking.calculateETA(
+              { lat: location.latitude, lng: location.longitude },
+              { lat: trackedDelivery.delivery_lat, lng: trackedDelivery.delivery_lng },
+            )
+            setEta(calculatedEta)
+          }
+        },
+      )
+
+      // Fetch initial driver location
+      fetchDriverLocation(trackedDelivery.driver_id)
+    }
+
+    // Cleanup subscriptions on unmount or when delivery changes
+    return () => {
+      statusSubscription.unsubscribe()
+      if (driverLocationSubscription) {
+        driverLocationSubscription.unsubscribe()
+      }
+    }
+  }, [trackedDelivery])
+
+  const fetchDriverLocation = async (driverId: string) => {
+    const location = await realtimeTracking.getDriverLocation(driverId)
+    if (location) {
+      setDriverLocation({ lat: location.latitude, lng: location.longitude })
+
+      // Calculate initial ETA
+      if (trackedDelivery?.delivery_lat && trackedDelivery?.delivery_lng) {
+        const calculatedEta = await realtimeTracking.calculateETA(
+          { lat: location.latitude, lng: location.longitude },
+          { lat: trackedDelivery.delivery_lat, lng: trackedDelivery.delivery_lng },
+        )
+        setEta(calculatedEta)
+      }
+    }
+  }
 
   const fetchRecentDeliveries = async () => {
     const { data, error } = await supabase
@@ -100,37 +138,21 @@ export function TrackSection({ user }: TrackSectionProps) {
 
     setIsLoading(true)
 
-    // Check in sample data first
-    const sampleDelivery = recentDeliveries.find((d) => d.tracking_code.toLowerCase() === trackingCode.toLowerCase())
+    try {
+      const { data, error } = await supabase
+        .from("deliveries")
+        .select("*")
+        .eq("tracking_code", trackingCode.toUpperCase())
+        .single()
 
-    if (sampleDelivery) {
-      setTrackedDelivery(sampleDelivery)
-      toast({
-        title: "Delivery Found",
-        description: `Status: ${sampleDelivery.status.replace("_", " ").toUpperCase()}`,
-      })
-    } else {
-      // Try database if user is authenticated
-      if (user) {
-        const { data, error } = await supabase
-          .from("deliveries")
-          .select("*")
-          .eq("tracking_code", trackingCode.toUpperCase())
-          .single()
-
-        if (data) {
-          setTrackedDelivery(data)
-          toast({
-            title: "Delivery Found",
-            description: `Status: ${data.status.replace("_", " ").toUpperCase()}`,
-          })
-        } else {
-          toast({
-            title: "Not Found",
-            description: "No delivery found with this tracking code",
-            variant: "destructive",
-          })
-        }
+      if (data) {
+        setTrackedDelivery(data)
+        setDriverLocation(null)
+        setEta(null)
+        toast({
+          title: "Delivery Found",
+          description: `Status: ${data.status.replace("_", " ").toUpperCase()}`,
+        })
       } else {
         toast({
           title: "Not Found",
@@ -138,40 +160,75 @@ export function TrackSection({ user }: TrackSectionProps) {
           variant: "destructive",
         })
       }
+    } catch (error) {
+      console.error("[v0] Error tracking delivery:", error)
+      toast({
+        title: "Error",
+        description: "Failed to track delivery. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "delivered":
-        return "bg-green-500"
+        return "bg-green-500/20 text-green-400 border-green-500/30"
       case "in_transit":
-        return "bg-orange-500"
+      case "picked_up":
+        return "bg-orange-500/20 text-orange-400 border-orange-500/30"
+      case "accepted":
+        return "bg-blue-500/20 text-blue-400 border-blue-500/30"
       case "pending":
-        return "bg-yellow-500"
+        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
       case "cancelled":
-        return "bg-red-500"
+        return "bg-red-500/20 text-red-400 border-red-500/30"
       default:
-        return "bg-gray-500"
+        return "bg-gray-500/20 text-gray-400 border-gray-500/30"
     }
   }
 
   const getStatusText = (status: string) => {
+    return status.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())
+  }
+
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case "delivered":
-        return "Delivered"
+        return <Package className="w-4 h-4" />
       case "in_transit":
-        return "In Transit"
-      case "pending":
-        return "Pending"
-      case "cancelled":
-        return "Cancelled"
+      case "picked_up":
+        return <Truck className="w-4 h-4" />
+      case "accepted":
+        return <Clock className="w-4 h-4" />
       default:
-        return "Unknown"
+        return <Package className="w-4 h-4" />
     }
   }
+
+  const mapDeliveries =
+    trackedDelivery && trackedDelivery.pickup_lat && trackedDelivery.pickup_lng
+      ? [
+          {
+            lat: trackedDelivery.pickup_lat,
+            lng: trackedDelivery.pickup_lng,
+            address: trackedDelivery.pickup_address,
+            type: "pickup" as const,
+          },
+          ...(trackedDelivery.delivery_lat && trackedDelivery.delivery_lng
+            ? [
+                {
+                  lat: trackedDelivery.delivery_lat,
+                  lng: trackedDelivery.delivery_lng,
+                  address: trackedDelivery.delivery_address,
+                  type: "delivery" as const,
+                },
+              ]
+            : []),
+        ]
+      : []
 
   return (
     <div className="px-4 pt-6 pb-16 space-y-6">
@@ -202,56 +259,120 @@ export function TrackSection({ user }: TrackSectionProps) {
         </CardContent>
       </Card>
 
-      {/* Tracked Delivery Details */}
+      {/* Tracked Delivery Details with Real-Time Map */}
       {trackedDelivery && (
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardHeader>
-            <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-              <Package className="w-5 h-5" />
-              Delivery Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Tracking Code:</span>
-              <span className="font-semibold text-white">{trackedDelivery.tracking_code}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400">Status:</span>
-              <Badge className={`${getStatusColor(trackedDelivery.status)} text-white`}>
-                {getStatusText(trackedDelivery.status)}
-              </Badge>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-400">From:</p>
-                  <p className="text-white">{trackedDelivery.pickup_address}</p>
+        <>
+          {/* Live Map */}
+          {mapDeliveries.length > 0 && (
+            <Card className="bg-white/10 backdrop-blur-md border-white/20">
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Navigation2 className="w-5 h-5 text-orange-500" />
+                  Live Tracking
+                  {driverLocation && (
+                    <Badge className="bg-green-500/20 text-green-400 border-green-500/30 ml-auto">
+                      <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                      Live
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <InteractiveMap
+                  deliveries={mapDeliveries}
+                  showRoute={true}
+                  driverLocation={driverLocation || undefined}
+                  className="h-[400px]"
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Delivery Details */}
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
+                <Package className="w-5 h-5" />
+                Delivery Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Tracking Code:</span>
+                <span className="font-semibold text-white">{trackedDelivery.tracking_code}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Status:</span>
+                <Badge className={getStatusColor(trackedDelivery.status)}>
+                  {getStatusIcon(trackedDelivery.status)}
+                  <span className="ml-1">{getStatusText(trackedDelivery.status)}</span>
+                </Badge>
+              </div>
+
+              {/* ETA Display */}
+              {eta !== null && trackedDelivery.status === "in_transit" && (
+                <div className="flex justify-between items-center p-3 bg-orange-500/10 rounded-lg border border-orange-500/20">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-orange-400" />
+                    <span className="text-gray-300">Estimated Arrival:</span>
+                  </div>
+                  <span className="font-semibold text-orange-400">{eta} minutes</span>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-400">From:</p>
+                    <p className="text-white">{trackedDelivery.pickup_address}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-400">To:</p>
+                    <p className="text-white">{trackedDelivery.delivery_address}</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 text-red-500 mt-1 flex-shrink-0" />
-                <div>
-                  <p className="text-sm text-gray-400">To:</p>
-                  <p className="text-white">{trackedDelivery.delivery_address}</p>
+
+              {trackedDelivery.item_description && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Item:</span>
+                  <span className="text-white">{trackedDelivery.item_description}</span>
                 </div>
-              </div>
-            </div>
-            {trackedDelivery.driver_name && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Driver:</span>
-                <span className="text-white">{trackedDelivery.driver_name}</span>
-              </div>
-            )}
-            {trackedDelivery.estimated_delivery && (
-              <div className="flex justify-between items-center">
-                <span className="text-gray-400">Est. Delivery:</span>
-                <span className="text-white">{new Date(trackedDelivery.estimated_delivery).toLocaleString()}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+
+              {trackedDelivery.delivery_fee && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Delivery Fee:</span>
+                  <span className="text-white font-semibold">R{trackedDelivery.delivery_fee}</span>
+                </div>
+              )}
+
+              {trackedDelivery.estimated_delivery && (
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-400">Est. Delivery:</span>
+                  <span className="text-white">{new Date(trackedDelivery.estimated_delivery).toLocaleString()}</span>
+                </div>
+              )}
+
+              {/* Driver Contact (if in transit) */}
+              {trackedDelivery.driver_id && ["in_transit", "picked_up"].includes(trackedDelivery.status) && (
+                <div className="pt-3 border-t border-white/10">
+                  <Button
+                    variant="outline"
+                    className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    Contact Driver
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Recent Deliveries */}
@@ -265,18 +386,22 @@ export function TrackSection({ user }: TrackSectionProps) {
               <div
                 key={delivery.id}
                 className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 cursor-pointer hover:bg-white/10 transition-colors"
-                onClick={() => setTrackedDelivery(delivery)}
+                onClick={() => {
+                  setTrackedDelivery(delivery)
+                  setTrackingCode(delivery.tracking_code)
+                }}
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h4 className="font-semibold text-white">{delivery.tracking_code}</h4>
-                    <p className="text-sm text-gray-400">To: {delivery.destination}</p>
+                    <p className="text-sm text-gray-400 truncate">{delivery.delivery_address}</p>
                   </div>
                   <div className="text-right">
-                    <Badge className={`${getStatusColor(delivery.status)} text-white text-xs`}>
-                      {getStatusText(delivery.status)}
+                    <Badge className={getStatusColor(delivery.status)}>
+                      {getStatusIcon(delivery.status)}
+                      <span className="ml-1">{getStatusText(delivery.status)}</span>
                     </Badge>
-                    <p className="text-xs text-gray-400 mt-1">{delivery.created_at}</p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(delivery.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               </div>

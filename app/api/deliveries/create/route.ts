@@ -1,8 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
 import { type NextRequest, NextResponse } from "next/server"
+import { rateLimit, getRateLimitIdentifier } from "@/lib/api-rate-limiter"
+import { sanitizeObject } from "@/lib/input-sanitizer"
 
 export async function POST(request: NextRequest) {
   try {
+    const identifier = getRateLimitIdentifier(request)
+    if (!rateLimit(identifier, 10, 60000)) {
+      return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+    }
+
     const supabase = await createClient()
 
     const {
@@ -15,6 +22,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
+
+    const sanitizedBody = sanitizeObject(body)
+
     const {
       pickupAddress,
       pickupLat,
@@ -28,11 +38,14 @@ export async function POST(request: NextRequest) {
       deliveryFee,
       distanceKm,
       paymentMethod,
-    } = body
+    } = sanitizedBody
 
     if (!pickupAddress || !deliveryAddress || !itemDescription || !paymentMethod) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
+
+    const validatedDeliveryFee = typeof deliveryFee === "number" && deliveryFee >= 0 ? deliveryFee : 0
+    const validatedDistanceKm = typeof distanceKm === "number" && distanceKm >= 0 ? distanceKm : 0
 
     const { data: delivery, error: deliveryError } = await supabase
       .from("deliveries")
@@ -47,8 +60,8 @@ export async function POST(request: NextRequest) {
         item_description: itemDescription,
         item_size: itemSize || "medium",
         item_weight: itemWeight || "light",
-        delivery_fee: deliveryFee || 0,
-        distance_km: distanceKm || 0,
+        delivery_fee: validatedDeliveryFee,
+        distance_km: validatedDistanceKm,
         payment_method: paymentMethod,
         payment_status: "pending",
         status: "pending",
@@ -80,7 +93,7 @@ export async function POST(request: NextRequest) {
       const driverNotifications = availableDrivers.map((driver) => ({
         user_id: driver.id,
         title: "New Delivery Request",
-        message: `${itemDescription} - R${deliveryFee} (${distanceKm?.toFixed(1) || 0}km)`,
+        message: `${itemDescription} - R${validatedDeliveryFee} (${validatedDistanceKm?.toFixed(1) || 0}km)`,
         type: "delivery_request",
         is_read: false,
       }))
