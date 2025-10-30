@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { Loader2, MapPin, Package, CreditCard } from "lucide-react"
 import { PaymentMethodSelector } from "@/components/payment-method-selector"
-import { paymentService } from "@/lib/payment-service"
 
 interface DeliveryRequestModalProps {
   isOpen: boolean
@@ -58,7 +57,6 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
     setIsLoading(true)
 
     try {
-      // Validate inputs
       if (!deliveryData.pickupAddress || !deliveryData.deliveryAddress) {
         throw new Error("Please provide both pickup and delivery addresses")
       }
@@ -67,71 +65,54 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
         throw new Error("Please describe the items to be delivered")
       }
 
-      const { data: delivery, error: deliveryError } = await supabase
-        .from("deliveries")
-        .insert({
-          customer_id: userId,
-          pickup_address: deliveryData.pickupAddress,
-          delivery_address: deliveryData.deliveryAddress,
-          item_description: deliveryData.itemDescription,
-          item_size: deliveryData.itemSize,
-          item_weight: deliveryData.itemWeight,
-          delivery_fee: deliveryFee,
-          distance_km: distance,
-          payment_method: deliveryData.paymentMethod,
-          payment_status: "pending",
-          status: "pending",
-          created_at: new Date().toISOString(),
-        })
-        .select()
-        .single()
+      const response = await fetch("/api/deliveries/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pickupAddress: deliveryData.pickupAddress,
+          deliveryAddress: deliveryData.deliveryAddress,
+          itemDescription: deliveryData.itemDescription,
+          itemSize: deliveryData.itemSize,
+          itemWeight: deliveryData.itemWeight,
+          deliveryFee: deliveryFee,
+          distanceKm: distance,
+          paymentMethod: deliveryData.paymentMethod,
+        }),
+      })
 
-      if (deliveryError) {
-        console.error("Delivery creation error:", deliveryError)
-        throw new Error("Failed to create delivery request. Please try again.")
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to create delivery request")
       }
 
-      // Process payment
-      if (deliveryData.paymentMethod === "paypal") {
+      if (deliveryData.paymentMethod === "paypal" && result.delivery) {
         try {
-          const paymentId = await paymentService.createPayPalPayment({
-            amount: deliveryFee,
-            currency: "ZAR",
-            description: `VanGo Delivery - ${deliveryData.itemDescription}`,
-            deliveryId: delivery.id,
-            customerId: userId,
+          const paymentResponse = await fetch("/api/payments/paypal/create", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              amount: deliveryFee,
+              currency: "ZAR",
+              description: `VanGo Delivery - ${deliveryData.itemDescription}`,
+              deliveryId: result.delivery.id,
+            }),
           })
 
-          await supabase.from("deliveries").update({ payment_status: "processing" }).eq("id", delivery.id)
+          if (!paymentResponse.ok) {
+            console.error("[v0] Payment creation failed")
+            toast({
+              title: "Payment Processing",
+              description: "Your delivery is created. Payment will be processed shortly.",
+            })
+          }
         } catch (paymentError) {
-          console.error("Payment error:", paymentError)
-          // Don't fail the delivery, just mark payment as pending
-          toast({
-            title: "Payment Processing",
-            description: "Your delivery is created. Payment will be processed shortly.",
-          })
+          console.error("[v0] Payment error:", paymentError)
         }
-      }
-
-      // Notify available drivers
-      const { data: availableDrivers } = await supabase
-        .from("drivers")
-        .select("id")
-        .eq("is_online", true)
-        .eq("status", "active")
-        .limit(10)
-
-      if (availableDrivers && availableDrivers.length > 0) {
-        const notifications = availableDrivers.map((driver) => ({
-          user_id: driver.id,
-          title: "New Delivery Request",
-          message: `${deliveryData.itemDescription} - R${deliveryFee} (${distance.toFixed(1)}km)`,
-          type: "delivery_request",
-          metadata: { delivery_id: delivery.id },
-          created_at: new Date().toISOString(),
-        }))
-
-        await supabase.from("notifications").insert(notifications)
       }
 
       toast({
@@ -150,7 +131,7 @@ export function DeliveryRequestModal({ isOpen, onClose, userId }: DeliveryReques
         paymentMethod: "paypal",
       })
     } catch (error) {
-      console.error("Error creating delivery:", error)
+      console.error("[v0] Error creating delivery:", error)
       toast({
         title: "Failed to create delivery",
         description: error instanceof Error ? error.message : "Please try again",
