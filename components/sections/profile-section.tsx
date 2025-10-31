@@ -1,143 +1,116 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/auth-provider"
 import {
   User,
-  Edit,
+  MapPin,
+  Package,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Edit2,
   Save,
   X,
-  Phone,
-  Mail,
-  Calendar,
-  Star,
-  Package,
-  History,
+  Camera,
   Settings,
+  History,
+  CreditCard,
+  Bell,
   Shield,
-  MapPin,
+  LogOut,
 } from "lucide-react"
-import { ProfileAvatarUpload } from "@/components/profile-avatar-upload"
-import { ProfileCompletionBanner } from "@/components/profile-completion-banner"
-import { ProfileVerificationStatus } from "@/components/profile-verification-status"
-import { DriverProfileForm } from "@/components/driver-profile-form"
 
 interface ProfileSectionProps {
-  user: any
-  onLogout: () => void
-  onRefreshProfile?: () => void
-  onNavigateToSection?: (section: string) => void
+  onNavigate: (section: string) => void
 }
 
-export function ProfileSection({ user, onLogout, onRefreshProfile, onNavigateToSection }: ProfileSectionProps) {
-  const [profile, setProfile] = useState<any>(null)
-  const [isEditing, setIsEditing] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [deliveryStats, setDeliveryStats] = useState({ total: 0, pending: 0, completed: 0, rating: 0 })
-  const [showDriverForm, setShowDriverForm] = useState(false)
-  const [driverData, setDriverData] = useState<any>(null)
+interface ProfileData {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string
+  phone_number: string
+  user_type: string
+  avatar_url: string | null
+  created_at: string
+}
+
+interface DeliveryStats {
+  total: number
+  completed: number
+  pending: number
+  cancelled: number
+}
+
+interface DriverStats {
+  total_deliveries: number
+  total_earnings: number
+  rating: number
+  is_online: boolean
+}
+
+export function ProfileSection({ onNavigate }: ProfileSectionProps) {
+  const { user, signOut } = useAuth()
   const { toast } = useToast()
-  const supabase = createClient()
+  const [isEditing, setIsEditing] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+
+  const [profileData, setProfileData] = useState<ProfileData | null>(null)
+  const [deliveryStats, setDeliveryStats] = useState<DeliveryStats>({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    cancelled: 0,
+  })
+  const [driverStats, setDriverStats] = useState<DriverStats | null>(null)
+
+  const [editedData, setEditedData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+  })
 
   useEffect(() => {
     if (user) {
-      fetchProfile()
-      fetchDeliveryStats()
+      fetchProfileData()
     }
   }, [user])
 
-  const fetchProfile = async () => {
-    if (!user?.id) return
-
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", user.id).single()
-
-    if (data) {
-      setProfile(data)
-      if (data.user_type === "driver") {
-        const { data: driverInfo } = await supabase.from("drivers").select("*").eq("id", user.id).single()
-        setDriverData(driverInfo)
-      }
-    } else if (error) {
-      console.error("Error fetching profile:", error)
-    }
-  }
-
-  const fetchDeliveryStats = async () => {
-    if (!user?.id) return
-
-    const { data: deliveries } = await supabase
-      .from("deliveries")
-      .select("status, customer_rating")
-      .eq(profile?.user_type === "driver" ? "driver_id" : "customer_id", user.id)
-
-    if (deliveries) {
-      const stats = deliveries.reduce(
-        (acc, delivery) => {
-          acc.total++
-          if (delivery.status === "pending" || delivery.status === "accepted" || delivery.status === "picked_up") {
-            acc.pending++
-          } else if (delivery.status === "completed") {
-            acc.completed++
-          }
-          return acc
-        },
-        { total: 0, pending: 0, completed: 0, rating: 0 },
-      )
-
-      const ratingsData = deliveries.filter((d) => d.customer_rating)
-      if (ratingsData.length > 0) {
-        const avgRating = ratingsData.reduce((sum, r) => sum + r.customer_rating, 0) / ratingsData.length
-        stats.rating = Math.round(avgRating * 10) / 10
-      }
-
-      setDeliveryStats(stats)
-    }
-  }
-
-  const handleSaveProfile = async () => {
-    if (!user?.id) {
-      toast({
-        title: "Error",
-        description: "Please log in to update your profile",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoading(true)
-
+  const fetchProfileData = async () => {
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          first_name: profile.first_name,
-          last_name: profile.last_name,
-          phone: profile.phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id)
+      setIsLoading(true)
+      const response = await fetch("/api/profile/update")
 
-      if (error) throw error
-
-      toast({
-        title: "Success",
-        description: "Profile updated successfully",
-      })
-      setIsEditing(false)
-
-      if (onRefreshProfile) {
-        onRefreshProfile()
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile")
       }
+
+      const data = await response.json()
+
+      setProfileData(data.profile)
+      setDeliveryStats(data.stats)
+      setDriverStats(data.driverStats)
+
+      setEditedData({
+        first_name: data.profile.first_name || "",
+        last_name: data.profile.last_name || "",
+        phone: data.profile.phone || data.profile.phone_number || "",
+      })
     } catch (error) {
-      console.error("Error updating profile:", error)
+      console.error("Error fetching profile:", error)
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: "Failed to load profile data",
         variant: "destructive",
       })
     } finally {
@@ -145,55 +118,140 @@ export function ProfileSection({ user, onLogout, onRefreshProfile, onNavigateToS
     }
   }
 
-  const handleCancelEdit = () => {
-    setIsEditing(false)
-    fetchProfile()
-  }
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-  const handleAvatarUpdate = async (url: string) => {
-    setProfile({ ...profile, avatar_url: url })
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select an image file",
+        variant: "destructive",
+      })
+      return
+    }
 
-    if (user?.id) {
-      await supabase.from("profiles").update({ avatar_url: url }).eq("id", user.id)
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB",
+        variant: "destructive",
+      })
+      return
+    }
 
-      if (onRefreshProfile) {
-        onRefreshProfile()
+    setIsUploadingAvatar(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const response = await fetch("/api/profile/upload-avatar", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error("Upload failed")
       }
+
+      const data = await response.json()
+
+      // Update local state
+      if (profileData) {
+        setProfileData({
+          ...profileData,
+          avatar_url: data.url,
+        })
+      }
+
+      toast({
+        title: "Success",
+        description: "Profile photo updated successfully",
+      })
+    } catch (error) {
+      console.error("Avatar upload error:", error)
+      toast({
+        title: "Upload failed",
+        description: "Failed to update profile photo",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingAvatar(false)
     }
   }
 
-  const handleDriverProfileComplete = () => {
-    setShowDriverForm(false)
-    fetchProfile()
-    toast({
-      title: "Profile Submitted",
-      description: "Your driver profile has been submitted for verification",
-    })
+  const handleSaveProfile = async () => {
+    setIsSaving(true)
+
+    try {
+      const response = await fetch("/api/profile/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editedData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Update failed")
+      }
+
+      const data = await response.json()
+      setProfileData(data.profile)
+      setIsEditing(false)
+
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      })
+    } catch (error) {
+      console.error("Profile update error:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  if (!user) {
-    return (
-      <div className="px-4 pt-6 pb-16">
-        <Card className="bg-white/10 backdrop-blur-md border-white/20">
-          <CardContent className="p-8 text-center">
-            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="text-2xl font-bold mb-2 text-white">My Profile</h2>
-            <p className="text-gray-300 mb-6">Please log in to view and manage your profile.</p>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">Login / Register</Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  const handleCancelEdit = () => {
+    if (profileData) {
+      setEditedData({
+        first_name: profileData.first_name || "",
+        last_name: profileData.last_name || "",
+        phone: profileData.phone || profileData.phone_number || "",
+      })
+    }
+    setIsEditing(false)
   }
 
-  if (profile?.user_type === "driver" && showDriverForm) {
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      })
+    }
+  }
+
+  if (isLoading) {
     return (
-      <div className="px-4 pt-6 pb-16">
-        <DriverProfileForm
-          userId={user.id}
-          onComplete={handleDriverProfileComplete}
-          onCancel={() => setShowDriverForm(false)}
-        />
+      <div className="px-4 pt-6 pb-16 space-y-6">
+        <div className="flex justify-center items-center h-64">
+          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        </div>
       </div>
     )
   }
@@ -203,307 +261,269 @@ export function ProfileSection({ user, onLogout, onRefreshProfile, onNavigateToS
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-white">My Profile</h2>
         {isEditing ? (
-          <Button
-            onClick={handleCancelEdit}
-            variant="outline"
-            className="border-red-500 text-red-500 hover:bg-red-500/10 bg-transparent"
-          >
-            <X className="w-4 h-4 mr-2" />
-            Cancel
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCancelEdit}
+              variant="outline"
+              size="sm"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveProfile}
+              disabled={isSaving}
+              size="sm"
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+            >
+              {isSaving ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+              ) : (
+                <Save className="w-4 h-4 mr-1" />
+              )}
+              Save
+            </Button>
+          </div>
         ) : (
-          <Button
-            onClick={() => setIsEditing(true)}
-            variant="outline"
-            className="border-orange-500 text-orange-500 hover:bg-orange-500/10"
-          >
-            <Edit className="w-4 h-4 mr-2" />
+          <Button onClick={() => setIsEditing(true)} size="sm" className="bg-orange-500 hover:bg-orange-600 text-white">
+            <Edit2 className="w-4 h-4 mr-1" />
             Edit
           </Button>
         )}
       </div>
 
-      {profile && (
-        <ProfileCompletionBanner
-          user={user}
-          profile={profile}
-          onEditProfile={() => setIsEditing(true)}
-          onAddPayment={() => {}}
-        />
-      )}
-
-      {profile?.user_type === "driver" &&
-        (!driverData || !driverData.verification_status || driverData.verification_status === "pending") && (
-          <Card className="bg-orange-500/10 backdrop-blur-md border-orange-500/30">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Shield className="w-5 h-5 text-orange-500 mt-0.5" />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-white mb-1">Complete Your Driver Profile</h3>
-                  <p className="text-sm text-gray-300 mb-3">
-                    To start accepting deliveries, you need to complete your driver profile and submit required
-                    documents for verification.
-                  </p>
-                  <Button
-                    onClick={() => setShowDriverForm(true)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white"
-                  >
-                    Complete Driver Profile
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-4 mb-6">
-            <ProfileAvatarUpload
-              userId={user.id}
-              currentAvatarUrl={profile?.avatar_url}
-              onAvatarUpdate={handleAvatarUpdate}
-              size="lg"
-              editable={true}
-            />
-            <div className="flex-1">
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label htmlFor="firstName" className="text-white text-xs mb-1">
-                        First Name
-                      </Label>
-                      <Input
-                        id="firstName"
-                        value={profile?.first_name || ""}
-                        onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                        placeholder="First Name"
-                        className="bg-slate-700 border-slate-600 text-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName" className="text-white text-xs mb-1">
-                        Last Name
-                      </Label>
-                      <Input
-                        id="lastName"
-                        value={profile?.last_name || ""}
-                        onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                        placeholder="Last Name"
-                        className="bg-slate-700 border-slate-600 text-white"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="phone" className="text-white text-xs mb-1">
-                      Phone Number
-                    </Label>
-                    <Input
-                      id="phone"
-                      value={profile?.phone || ""}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      placeholder="Phone Number"
-                      className="bg-slate-700 border-slate-600 text-white"
-                    />
-                  </div>
-                </div>
+      <Card className="bg-white/5 border-white/10 p-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div className="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center text-white overflow-hidden border-2 border-white/20">
+              {profileData?.avatar_url ? (
+                <img
+                  src={profileData.avatar_url || "/placeholder.svg"}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               ) : (
-                <>
-                  <h3 className="font-semibold text-white text-xl">
-                    {profile?.first_name} {profile?.last_name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
-                    <Mail className="w-4 h-4" />
-                    <span>{user.email}</span>
-                  </div>
-                  {profile?.phone && (
-                    <div className="flex items-center gap-2 text-gray-400 text-sm mt-1">
-                      <Phone className="w-4 h-4" />
-                      <span>{profile.phone}</span>
-                    </div>
-                  )}
-                  {deliveryStats.rating > 0 && (
-                    <div className="flex items-center gap-2 text-yellow-400 text-sm mt-1">
-                      <Star className="w-4 h-4 fill-current" />
-                      <span>{deliveryStats.rating} rating</span>
-                    </div>
-                  )}
-                </>
+                <User className="w-10 h-10" />
               )}
             </div>
-          </div>
-
-          {isEditing && (
-            <Button
-              onClick={handleSaveProfile}
-              disabled={isLoading}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+            <label
+              htmlFor="avatar-upload"
+              className="absolute -bottom-1 -right-1 w-8 h-8 bg-orange-500 hover:bg-orange-600 text-white rounded-full flex items-center justify-center cursor-pointer border-2 border-white"
             >
-              <Save className="w-4 h-4 mr-2" />
-              {isLoading ? "Saving..." : "Save Changes"}
-            </Button>
-          )}
-        </CardContent>
+              {isUploadingAvatar ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-3 h-3" />
+              )}
+            </label>
+            <input
+              id="avatar-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+              disabled={isUploadingAvatar}
+            />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-xl font-bold text-white">
+              {profileData?.first_name} {profileData?.last_name}
+            </h3>
+            <p className="text-sm text-white/60 capitalize">{profileData?.user_type || "Customer"}</p>
+            <p className="text-xs text-white/40 mt-1">
+              Member since {profileData?.created_at ? new Date(profileData.created_at).toLocaleDateString() : "N/A"}
+            </p>
+          </div>
+        </div>
       </Card>
 
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-            <User className="w-5 h-5" />
-            Account Information
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex justify-between items-center py-2 border-b border-white/10">
-            <div className="flex items-center gap-2 text-gray-400">
-              <User className="w-4 h-4" />
-              <span>User ID:</span>
-            </div>
-            <span className="font-medium text-white text-sm">{user.id.slice(0, 8)}...</span>
+      <Card className="bg-white/5 border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Account Information</h3>
+        <div className="space-y-4">
+          <div>
+            <Label className="text-white/60 text-sm">First Name</Label>
+            {isEditing ? (
+              <Input
+                value={editedData.first_name}
+                onChange={(e) => setEditedData({ ...editedData, first_name: e.target.value })}
+                className="bg-white/10 border-white/20 text-white mt-1"
+              />
+            ) : (
+              <p className="text-white mt-1">{profileData?.first_name || "Not set"}</p>
+            )}
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-white/10">
-            <div className="flex items-center gap-2 text-gray-400">
-              <Star className="w-4 h-4" />
-              <span>Account Type:</span>
-            </div>
-            <span className="font-medium text-white capitalize">{profile?.user_type || "Customer"}</span>
+          <div>
+            <Label className="text-white/60 text-sm">Last Name</Label>
+            {isEditing ? (
+              <Input
+                value={editedData.last_name}
+                onChange={(e) => setEditedData({ ...editedData, last_name: e.target.value })}
+                className="bg-white/10 border-white/20 text-white mt-1"
+              />
+            ) : (
+              <p className="text-white mt-1">{profileData?.last_name || "Not set"}</p>
+            )}
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-white/10">
-            <div className="flex items-center gap-2 text-gray-400">
-              <Mail className="w-4 h-4" />
-              <span>Email:</span>
-            </div>
-            <span className="font-medium text-white text-sm">{user.email}</span>
+          <div>
+            <Label className="text-white/60 text-sm">Phone Number</Label>
+            {isEditing ? (
+              <Input
+                value={editedData.phone}
+                onChange={(e) => setEditedData({ ...editedData, phone: e.target.value })}
+                className="bg-white/10 border-white/20 text-white mt-1"
+              />
+            ) : (
+              <p className="text-white mt-1">{profileData?.phone || profileData?.phone_number || "Not set"}</p>
+            )}
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-white/10">
-            <div className="flex items-center gap-2 text-gray-400">
-              <Phone className="w-4 h-4" />
-              <span>Phone:</span>
-            </div>
-            <span className="font-medium text-white">{profile?.phone || "Not set"}</span>
+          <div>
+            <Label className="text-white/60 text-sm">Email</Label>
+            <p className="text-white mt-1">{user?.email || "Not set"}</p>
           </div>
-          <div className="flex justify-between items-center py-2">
-            <div className="flex items-center gap-2 text-gray-400">
-              <Calendar className="w-4 h-4" />
-              <span>Member Since:</span>
-            </div>
-            <span className="font-medium text-white">
-              {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A"}
-            </span>
-          </div>
-        </CardContent>
+        </div>
       </Card>
 
-      {profile && <ProfileVerificationStatus userId={user.id} userType={profile.user_type || "customer"} />}
+      <Card className="bg-white/5 border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">
+          {profileData?.user_type === "driver" ? "Driver Statistics" : "Delivery Statistics"}
+        </h3>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Package className="w-5 h-5 text-orange-500" />
+              <span className="text-white/60 text-sm">Total</span>
+            </div>
+            <p className="text-2xl font-bold text-white">
+              {profileData?.user_type === "driver" ? driverStats?.total_deliveries || 0 : deliveryStats.total}
+            </p>
+          </div>
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="w-5 h-5 text-green-500" />
+              <span className="text-white/60 text-sm">Completed</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{deliveryStats.completed}</p>
+          </div>
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-5 h-5 text-blue-500" />
+              <span className="text-white/60 text-sm">Pending</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{deliveryStats.pending}</p>
+          </div>
+          <div className="bg-white/5 rounded-lg p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <XCircle className="w-5 h-5 text-red-500" />
+              <span className="text-white/60 text-sm">Cancelled</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{deliveryStats.cancelled}</p>
+          </div>
+        </div>
 
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white flex items-center gap-2">
-            <Package className="w-5 h-5" />
-            {profile?.user_type === "driver" ? "Driver Statistics" : "Delivery Statistics"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-orange-500">{deliveryStats.total}</div>
-              <div className="text-xs text-gray-400">Total</div>
+        {profileData?.user_type === "driver" && driverStats && (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CreditCard className="w-5 h-5 text-green-500" />
+                <span className="text-white/60 text-sm">Total Earnings</span>
+              </div>
+              <p className="text-2xl font-bold text-white">R{driverStats.total_earnings.toFixed(2)}</p>
             </div>
-            <div>
-              <div className="text-2xl font-bold text-yellow-500">{deliveryStats.pending}</div>
-              <div className="text-xs text-gray-400">Active</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-green-500">{deliveryStats.completed}</div>
-              <div className="text-xs text-gray-400">Completed</div>
+            <div className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <User className="w-5 h-5 text-yellow-500" />
+                <span className="text-white/60 text-sm">Rating</span>
+              </div>
+              <p className="text-2xl font-bold text-white">{driverStats.rating.toFixed(1)} ⭐</p>
             </div>
           </div>
-          {deliveryStats.rating > 0 && (
-            <div className="mt-4 pt-4 border-t border-white/10 text-center">
-              <div className="text-2xl font-bold text-yellow-500">{deliveryStats.rating}</div>
-              <div className="text-xs text-gray-400">Average Rating</div>
-            </div>
-          )}
-        </CardContent>
+        )}
       </Card>
 
-      <Card className="bg-white/10 backdrop-blur-md border-white/20">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-white">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {profile?.user_type === "driver" && (
-            <Button
-              onClick={() => setShowDriverForm(true)}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
-            >
-              <Shield className="w-4 h-4" />
-              Update Driver Profile & Documents
-            </Button>
-          )}
+      <Card className="bg-white/5 border-white/10 p-6">
+        <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
+        <div className="space-y-2">
           <Button
             onClick={() => setIsEditing(true)}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
           >
-            <User className="w-4 h-4" />
+            <Edit2 className="w-5 h-5 mr-3 text-orange-500" />
             Edit Profile Details
           </Button>
           <Button
-            onClick={() => {
-              if (onNavigateToSection) {
-                onNavigateToSection("deliveryHistorySection")
-              } else {
-                toast({
-                  title: "Navigation",
-                  description: "Opening delivery history...",
-                })
-              }
-            }}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+            onClick={() => onNavigate("deliveryHistorySection")}
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
           >
-            <History className="w-4 h-4" />
+            <History className="w-5 h-5 mr-3 text-blue-500" />
             View Delivery History
           </Button>
           <Button
-            onClick={() => {
-              if (onNavigateToSection) {
-                onNavigateToSection("deliveryAreasSection")
-              } else {
-                toast({
-                  title: "Navigation",
-                  description: "Opening delivery areas...",
-                })
-              }
-            }}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+            onClick={() => onNavigate("settingsSection")}
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
           >
-            <MapPin className="w-4 h-4" />
+            <Settings className="w-5 h-5 mr-3 text-purple-500" />
+            Account Settings
+          </Button>
+          <Button
+            onClick={() => {
+              toast({
+                title: "Coming Soon",
+                description: "Delivery areas feature will be available soon",
+              })
+            }}
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
+          >
+            <MapPin className="w-5 h-5 mr-3 text-green-500" />
             View Delivery Areas
           </Button>
           <Button
             onClick={() => {
-              if (onNavigateToSection) {
-                onNavigateToSection("settingsSection")
-              } else {
-                toast({
-                  title: "Navigation",
-                  description: "Opening settings...",
-                })
-              }
+              toast({
+                title: "Coming Soon",
+                description: "Payment methods feature will be available soon",
+              })
             }}
-            className="w-full bg-slate-700 hover:bg-slate-600 text-white py-3 rounded font-semibold flex items-center justify-center gap-2"
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
           >
-            <Settings className="w-4 h-4" />
-            Account Settings
+            <CreditCard className="w-5 h-5 mr-3 text-yellow-500" />
+            Payment Methods
           </Button>
           <Button
-            onClick={onLogout}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded font-semibold"
+            onClick={() => onNavigate("settingsSection")}
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
           >
-            Logout
+            <Bell className="w-5 h-5 mr-3 text-pink-500" />
+            Notification Settings
           </Button>
-        </CardContent>
+          <Button
+            onClick={() => {
+              toast({
+                title: "Coming Soon",
+                description: "Privacy & security settings will be available soon",
+              })
+            }}
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-white/10"
+          >
+            <Shield className="w-5 h-5 mr-3 text-cyan-500" />
+            Privacy & Security
+          </Button>
+          <Button
+            onClick={handleLogout}
+            variant="ghost"
+            className="w-full justify-start text-red-500 hover:bg-red-500/10"
+          >
+            <LogOut className="w-5 h-5 mr-3" />
+            Log Out
+          </Button>
+        </div>
       </Card>
     </div>
   )
