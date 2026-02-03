@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { Suspense } from "react"
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { OfflineIndicator } from "@/components/offline-indicator"
 import { FullScreenLoading } from "@/components/loading-fallback"
@@ -83,6 +84,7 @@ export default function RootLayout({
           <OfflineIndicator />
           <Toaster />
         </ErrorBoundary>
+        <SpeedInsights />
       </body>
     </html>
   )
