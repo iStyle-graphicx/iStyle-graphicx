@@ -1,5 +1,11 @@
-import { createClient } from "@/lib/supabase/client"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createSupabaseClient(supabaseUrl, supabaseServiceKey)
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,10 +16,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Driver ID is required" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = getServiceClient()
 
     // Update driver availability
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       is_online: isOnline,
       updated_at: new Date().toISOString(),
     }
@@ -40,7 +46,7 @@ export async function POST(request: NextRequest) {
         user_id: driverId,
         title: "You're Online",
         message: "You are now visible to customers and can receive delivery requests",
-        type: "status_change",
+        type: "info",
         is_read: false,
       })
     }
@@ -57,12 +63,12 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const lat = searchParams.get("lat")
     const lng = searchParams.get("lng")
-    const radius = searchParams.get("radius") || "15" // Default 15km radius
+    const radius = searchParams.get("radius") || "15"
 
-    const supabase = createClient()
+    const supabase = getServiceClient()
 
-    // Fetch available drivers
-    const { data: drivers, error } = await supabase
+    // Fetch all drivers with their status (both online and busy)
+    const { data: allDrivers, error: allError } = await supabase
       .from("drivers")
       .select(
         `
@@ -70,27 +76,43 @@ export async function GET(request: NextRequest) {
         profiles!inner(first_name, last_name, phone, avatar_url)
       `,
       )
-      .eq("is_online", true)
       .eq("status", "active")
 
-    if (error) {
-      console.error("Error fetching available drivers:", error)
+    if (allError) {
+      console.error("Error fetching drivers:", allError)
       return NextResponse.json({ error: "Failed to fetch drivers" }, { status: 500 })
     }
 
+    // Fetch currently active deliveries to determine which drivers are busy
+    const { data: activeDeliveries } = await supabase
+      .from("deliveries")
+      .select("driver_id")
+      .in("status", ["accepted", "picked_up", "in_transit"])
+      .not("driver_id", "is", null)
+
+    const busyDriverIds = new Set((activeDeliveries || []).map((d) => d.driver_id))
+
+    // Enrich drivers with availability status
+    const enrichedDrivers = (allDrivers || [])
+      .filter((driver) => driver.is_online)
+      .map((driver) => ({
+        ...driver,
+        is_busy: busyDriverIds.has(driver.id),
+        availability_status: busyDriverIds.has(driver.id) ? "busy" : "available",
+      }))
+
     // If location provided, calculate distances and filter by radius
-    let filteredDrivers = drivers
+    let filteredDrivers = enrichedDrivers
     if (lat && lng) {
       const userLat = Number.parseFloat(lat)
       const userLng = Number.parseFloat(lng)
       const maxRadius = Number.parseFloat(radius)
 
-      filteredDrivers = drivers
+      filteredDrivers = enrichedDrivers
         .map((driver) => {
           if (!driver.current_lat || !driver.current_lng) return null
 
-          // Calculate distance using Haversine formula
-          const R = 6371 // Earth's radius in km
+          const R = 6371
           const dLat = ((driver.current_lat - userLat) * Math.PI) / 180
           const dLng = ((driver.current_lng - userLng) * Math.PI) / 180
           const a =
@@ -104,14 +126,22 @@ export async function GET(request: NextRequest) {
 
           return {
             ...driver,
-            distance: Math.round(distance * 10) / 10, // Round to 1 decimal
+            distance: Math.round(distance * 10) / 10,
           }
         })
-        .filter((driver) => driver && driver.distance <= maxRadius)
-        .sort((a, b) => (a?.distance || 0) - (b?.distance || 0))
+        .filter((driver): driver is NonNullable<typeof driver> => driver !== null && driver.distance <= maxRadius)
+        .sort((a, b) => a.distance - b.distance)
     }
 
-    return NextResponse.json({ drivers: filteredDrivers, count: filteredDrivers?.length || 0 })
+    const availableCount = filteredDrivers.filter((d) => d.availability_status === "available").length
+    const busyCount = filteredDrivers.filter((d) => d.availability_status === "busy").length
+
+    return NextResponse.json({
+      drivers: filteredDrivers,
+      count: filteredDrivers.length,
+      availableCount,
+      busyCount,
+    })
   } catch (error) {
     console.error("Error in available drivers API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

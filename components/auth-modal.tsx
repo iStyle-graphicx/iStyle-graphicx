@@ -110,7 +110,13 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
     setError(null)
 
     try {
-      const supabase = createClient()
+      let supabase: ReturnType<typeof createClient>
+      try {
+        supabase = createClient()
+      } catch (initError) {
+        setError("Unable to connect to the server. Please check your internet connection and try again.")
+        return
+      }
 
       if (type === "login") {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -146,7 +152,7 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
+            emailRedirectTo: window.location.origin,
             data: {
               first_name: formData.firstName,
               last_name: formData.lastName,
@@ -183,7 +189,12 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
       }
     } catch (error) {
       console.error("[v0] Auth error:", error)
-      const errorMessage = getErrorMessage(error)
+      let errorMessage: string
+      if (error instanceof TypeError && error.message === "Failed to fetch") {
+        errorMessage = "Network error: Unable to reach the server. Please check your internet connection and try again."
+      } else {
+        errorMessage = getErrorMessage(error)
+      }
       setError(errorMessage)
       toast({
         title: "Error",
