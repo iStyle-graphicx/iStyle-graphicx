@@ -1,5 +1,11 @@
-import { createClient } from "@/lib/supabase/client"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { type NextRequest, NextResponse } from "next/server"
+
+function getServiceClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  return createSupabaseClient(supabaseUrl, supabaseServiceKey)
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = getServiceClient()
 
     // Fetch unread notifications
     const { data: notifications, error } = await supabase
@@ -42,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = getServiceClient()
 
     // Create notification
     const { data, error } = await supabase
@@ -78,7 +84,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Notification ID is required" }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = getServiceClient()
 
     // Mark notification as read
     const { error } = await supabase

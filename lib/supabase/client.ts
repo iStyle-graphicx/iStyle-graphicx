@@ -1,10 +1,11 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js"
 
-let client: SupabaseClient | null = null
+let browserClient: SupabaseClient | null = null
 
 export function createClient() {
-  if (client) {
-    return client
+  // Only use singleton in the browser; on the server always create a fresh client
+  if (typeof window !== "undefined" && browserClient) {
+    return browserClient
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -16,14 +17,18 @@ export function createClient() {
   }
 
   try {
-    client = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+    const client = createSupabaseClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        persistSession: true,
+        persistSession: typeof window !== "undefined",
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: typeof window !== "undefined",
         storage: typeof window !== "undefined" ? window.localStorage : undefined,
       },
     })
+
+    if (typeof window !== "undefined") {
+      browserClient = client
+    }
 
     return client
   } catch (error) {

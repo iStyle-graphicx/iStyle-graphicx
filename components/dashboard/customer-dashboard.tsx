@@ -21,6 +21,7 @@ import {
   Heart,
   Settings,
 } from "lucide-react"
+import { LiveDriverMap } from "@/components/live-driver-map"
 
 interface CustomerDashboardProps {
   user: any
@@ -289,6 +290,13 @@ export function CustomerDashboard({ user, onRequestDelivery, onNavigate }: Custo
           </CardContent>
         </Card>
       </div>
+
+      {/* Live Driver Map */}
+      <LiveDriverMap
+        onRequestDriver={(driver) => {
+          onRequestDelivery()
+        }}
+      />
 
       {/* Performance Indicators */}
       {stats.completedDeliveries > 0 && (

@@ -88,6 +88,7 @@ export function DriverAvailabilityToggle({ driverId, onStatusChange }: DriverAva
         .update({
           is_online: newStatus,
           ...locationUpdate,
+          last_online_at: newStatus ? new Date().toISOString() : undefined,
           updated_at: new Date().toISOString(),
         })
         .eq("id", driverId)

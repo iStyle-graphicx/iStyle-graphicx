@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { MapPin, Star, Phone, Navigation, Search } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { LiveDriverMap } from "@/components/live-driver-map"
 
 interface Driver {
   id: string
@@ -96,8 +97,7 @@ export function DriversSection() {
 
       const data = await response.json()
 
-      setDrivers(data.drivers || [])
-    } catch (error) {
+      setDrivers(data.drivers || [])    } catch (error) {
       console.error("Error fetching drivers:", error)
       toast({
         title: "Error",
@@ -124,6 +124,16 @@ export function DriversSection() {
         <h2 className="font-semibold text-2xl">Available Drivers</h2>
         <p className="text-muted-foreground text-sm">Find verified drivers near you who are ready to deliver</p>
       </div>
+
+      {/* Live Map View */}
+      <LiveDriverMap
+        onRequestDriver={(driver) => {
+          toast({
+            title: "Request Sent",
+            description: `Delivery request sent to ${driver.profiles.first_name}`,
+          })
+        }}
+      />
 
       <Card className="p-4">
         <div className="relative">
@@ -179,8 +189,15 @@ export function DriversSection() {
                         {driver.vehicle_type} • {driver.vehicle_model}
                       </p>
                     </div>
-                    <Badge variant="default" className="bg-green-500">
-                      Online
+                    <Badge
+                      variant="default"
+                      className={
+                        (driver as any).availability_status === "busy"
+                          ? "bg-orange-500"
+                          : "bg-green-500"
+                      }
+                    >
+                      {(driver as any).availability_status === "busy" ? "On Delivery" : "Available"}
                     </Badge>
                   </div>
 

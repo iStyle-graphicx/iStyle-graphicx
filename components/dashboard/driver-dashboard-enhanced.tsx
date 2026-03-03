@@ -87,6 +87,56 @@ export function DriverDashboardEnhanced({ user, onNavigate }: DriverDashboardEnh
     }
   }, [user])
 
+  // Continuous location tracking when driver is online
+  useEffect(() => {
+    if (!stats.isOnline || !user) return
+
+    let watchId: number | null = null
+
+    const updateLocation = async (position: GeolocationPosition) => {
+      try {
+        await supabase
+          .from("drivers")
+          .update({
+            current_lat: position.coords.latitude,
+            current_lng: position.coords.longitude,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", user.id)
+      } catch (error) {
+        console.error("Error updating driver location:", error)
+      }
+    }
+
+    if (navigator.geolocation) {
+      // Get initial position
+      navigator.geolocation.getCurrentPosition(updateLocation, (err) => {
+        console.error("Geolocation error:", err)
+      })
+
+      // Watch for continuous updates
+      watchId = navigator.geolocation.watchPosition(
+        updateLocation,
+        (err) => console.error("Watch position error:", err),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      )
+    }
+
+    // Also update on a timer as fallback (every 30 seconds)
+    const locationInterval = setInterval(() => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(updateLocation, () => {})
+      }
+    }, 30000)
+
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId)
+      }
+      clearInterval(locationInterval)
+    }
+  }, [stats.isOnline, user])
+
   const fetchDriverData = async () => {
     try {
       setIsLoading(true)
@@ -174,7 +224,31 @@ export function DriverDashboardEnhanced({ user, onNavigate }: DriverDashboardEnh
 
   const toggleOnlineStatus = async () => {
     const newStatus = !stats.isOnline
-    const { error } = await supabase.from("drivers").update({ is_online: newStatus }).eq("id", user.id)
+
+    // Get location before going online
+    let locationData: Record<string, number> = {}
+    if (newStatus && navigator.geolocation) {
+      try {
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000 })
+        })
+        locationData = {
+          current_lat: position.coords.latitude,
+          current_lng: position.coords.longitude,
+        }
+      } catch {
+        // Silently fail - location tracking useEffect will retry
+      }
+    }
+
+    const { error } = await supabase
+      .from("drivers")
+      .update({
+        is_online: newStatus,
+        ...locationData,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id)
 
     if (!error) {
       setStats((prev) => ({ ...prev, isOnline: newStatus }))
