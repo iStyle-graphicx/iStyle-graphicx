@@ -4,6 +4,9 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
+// Type helper for the browser client
+type SupabaseClient = ReturnType<typeof createClient>
+
 interface User {
   id: string
   name: string
@@ -37,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    let supabase: ReturnType<typeof createClient> | null = null
+    let supabase: SupabaseClient | null = null
 
     try {
       supabase = createClient()
@@ -49,15 +52,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const getSession = async () => {
       try {
+        // Use getUser() instead of getSession() - this validates the JWT
+        // with the Supabase server, ensuring we have a valid session
         const {
-          data: { session },
-        } = await supabase!.auth.getSession()
+          data: { user: authUser },
+          error,
+        } = await supabase!.auth.getUser()
 
-        if (session?.user) {
-          if (!session.user.email_confirmed_at) {
+        if (error) {
+          // If error is related to no session, that's normal for logged-out users
+          if (!error.message.includes("Auth session missing")) {
+            console.error("Auth getUser error:", error.message)
+          }
+          setIsLoading(false)
+          return
+        }
+
+        if (authUser) {
+          if (!authUser.email_confirmed_at) {
             setNeedsEmailVerification(true)
           }
-          await loadUserProfile(session.user)
+          await loadUserProfile(authUser)
         }
       } catch (error) {
         console.error("Auth session error:", error)
