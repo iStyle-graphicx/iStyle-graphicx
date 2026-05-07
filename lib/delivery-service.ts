@@ -26,14 +26,18 @@ export interface DeliveryResponse {
 }
 
 class DeliveryService {
-  private supabase = createClient()
+  // Create fresh client for each operation to ensure proper session handling
+  private getSupabase() {
+    return createClient()
+  }
 
   async createDelivery(request: CreateDeliveryRequest): Promise<DeliveryResponse> {
+    const supabase = this.getSupabase()
     try {
       const distance = this.calculateDistance(request)
       const deliveryFee = this.calculateDeliveryFee(distance, request.itemSize, request.itemWeight)
 
-      const { data: delivery, error: deliveryError } = await this.supabase
+      const { data: delivery, error: deliveryError } = await supabase
         .from("deliveries")
         .insert({
           customer_id: request.customerId,
@@ -67,17 +71,16 @@ class DeliveryService {
           customerId: request.customerId,
         })
 
-        await this.supabase.from("deliveries").update({ payment_status: "processing" }).eq("id", delivery.id)
+        await supabase.from("deliveries").update({ payment_status: "processing" }).eq("id", delivery.id)
       }
 
-      await this.notifyAvailableDrivers(delivery)
-
-      await this.supabase.from("notifications").insert({
+      // Driver notifications are handled by database trigger (notify_drivers_new_delivery)
+      
+      await supabase.from("notifications").insert({
         user_id: request.customerId,
         title: "Delivery Request Created",
         message: `Your delivery request has been created. We're finding the best driver for you.`,
         type: "delivery_request",
-        metadata: { delivery_id: delivery.id },
       })
 
       return {
@@ -93,8 +96,9 @@ class DeliveryService {
   }
 
   async acceptDelivery(deliveryId: string, driverId: string): Promise<void> {
+    const supabase = this.getSupabase()
     try {
-      const { data: delivery, error } = await this.supabase
+      const { data: delivery, error } = await supabase
         .from("deliveries")
         .update({
           driver_id: driverId,
@@ -107,13 +111,7 @@ class DeliveryService {
 
       if (error) throw error
 
-      await this.supabase.from("notifications").insert({
-        user_id: delivery.customer_id,
-        title: "Driver Assigned",
-        message: "A driver has accepted your delivery request and is on the way!",
-        type: "delivery_accepted",
-        metadata: { delivery_id: deliveryId, driver_id: driverId },
-      })
+      // Notifications are handled by database trigger (notify_delivery_status_change)
 
       realtimeTracking.subscribeToDelivery(deliveryId, (update) => {
         // Real-time tracking active
@@ -125,8 +123,9 @@ class DeliveryService {
   }
 
   async completeDelivery(deliveryId: string): Promise<void> {
+    const supabase = this.getSupabase()
     try {
-      const { data: delivery, error } = await this.supabase
+      const { data: delivery, error } = await supabase
         .from("deliveries")
         .update({
           status: "delivered",
@@ -141,25 +140,38 @@ class DeliveryService {
       const driverPayout = delivery.delivery_fee * 0.6
       await paymentService.processDriverPayout(delivery.driver_id, driverPayout, deliveryId)
 
-      await this.supabase.rpc("increment_driver_stats", {
-        driver_id: delivery.driver_id,
-        earnings: driverPayout,
-      })
+      // Try to use RPC if available, otherwise fallback
+      try {
+        await supabase.rpc("increment_driver_stats", {
+          driver_id: delivery.driver_id,
+          earnings: driverPayout,
+        })
+      } catch {
+        // Fallback: manually update driver stats
+        const { data: driverData } = await supabase
+          .from("drivers")
+          .select("total_earnings, total_deliveries")
+          .eq("id", delivery.driver_id)
+          .single()
+        
+        if (driverData) {
+          await supabase
+            .from("drivers")
+            .update({
+              total_earnings: (driverData.total_earnings || 0) + driverPayout,
+              total_deliveries: (driverData.total_deliveries || 0) + 1,
+            })
+            .eq("id", delivery.driver_id)
+        }
+      }
 
-      await this.supabase.from("notifications").insert({
-        user_id: delivery.customer_id,
-        title: "Delivery Completed",
-        message: "Your delivery has been completed successfully!",
-        type: "delivery_completed",
-        metadata: { delivery_id: deliveryId },
-      })
-
-      await this.supabase.from("notifications").insert({
+      // Customer notification handled by database trigger
+      // Driver payment notification
+      await supabase.from("notifications").insert({
         user_id: delivery.driver_id,
         title: "Payment Received",
         message: `You earned R${driverPayout.toFixed(2)} for completing the delivery!`,
         type: "payment_received",
-        metadata: { delivery_id: deliveryId, amount: driverPayout },
       })
     } catch (error) {
       console.error("[v0] Error completing delivery:", error)
@@ -187,28 +199,11 @@ class DeliveryService {
     return estimatedTime.toISOString()
   }
 
-  private async notifyAvailableDrivers(delivery: any): Promise<void> {
-    const { data: drivers } = await this.supabase
-      .from("drivers")
-      .select("id")
-      .eq("is_online", true)
-      .eq("verification_status", "approved")
-
-    if (drivers && drivers.length > 0) {
-      const notifications = drivers.map((driver) => ({
-        user_id: driver.id,
-        title: "New Delivery Request",
-        message: `${delivery.item_description} - R${delivery.delivery_fee} (${delivery.distance_km?.toFixed(1)}km)`,
-        type: "delivery_request",
-        metadata: { delivery_id: delivery.id },
-      }))
-
-      await this.supabase.from("notifications").insert(notifications)
-    }
-  }
+  // Driver notifications are now handled by database trigger (notify_drivers_new_delivery)
 
   async getDeliveryStatus(deliveryId: string) {
-    const { data, error } = await this.supabase
+    const supabase = this.getSupabase()
+    const { data, error } = await supabase
       .from("deliveries")
       .select(
         `
@@ -225,7 +220,8 @@ class DeliveryService {
   }
 
   async getCustomerDeliveries(customerId: string) {
-    const { data, error } = await this.supabase
+    const supabase = this.getSupabase()
+    const { data, error } = await supabase
       .from("deliveries")
       .select(
         `
@@ -241,7 +237,8 @@ class DeliveryService {
   }
 
   async getDriverDeliveries(driverId: string) {
-    const { data, error } = await this.supabase
+    const supabase = this.getSupabase()
+    const { data, error } = await supabase
       .from("deliveries")
       .select(
         `

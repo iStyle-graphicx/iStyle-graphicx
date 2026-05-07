@@ -113,16 +113,20 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
       let supabase: ReturnType<typeof createClient>
       try {
         supabase = createClient()
+        console.log("[v0] Supabase client created successfully")
       } catch (initError) {
+        console.error("[v0] Supabase client initialization error:", initError)
         setError("Unable to connect to the server. Please check your internet connection and try again.")
         return
       }
 
       if (type === "login") {
+        console.log("[v0] Attempting login for:", formData.email)
         const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         })
+        console.log("[v0] Login response:", { hasData: !!data, hasError: !!error, errorMessage: error?.message })
 
         if (error) {
           setError(getErrorMessage(error))
@@ -148,11 +152,12 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           return
         }
 
+        console.log("[v0] Attempting signup for:", formData.email, "as", formData.userType)
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/auth/callback`,
             data: {
               first_name: formData.firstName,
               last_name: formData.lastName,
@@ -161,6 +166,8 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
             },
           },
         })
+        
+        console.log("[v0] Signup response:", { hasData: !!data, hasUser: !!data?.user, hasError: !!error, errorMessage: error?.message })
 
         if (error) {
           setError(getErrorMessage(error))

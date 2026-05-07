@@ -1,7 +1,7 @@
 "use client"
 
 import { createClient } from "@/lib/supabase/client"
-import type { RealtimeChannel } from "@supabase/supabase-js"
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js"
 
 export interface DeliveryLocationUpdate {
   delivery_id: string
@@ -22,19 +22,27 @@ export interface DeliveryStatusUpdate {
 }
 
 class RealtimeTrackingService {
-  private supabase = createClient()
+  private supabaseInstance: SupabaseClient | null = null
   private channels: Map<string, RealtimeChannel> = new Map()
   private listeners: Map<string, Set<Function>> = new Map()
 
+  private getSupabase(): SupabaseClient {
+    if (!this.supabaseInstance) {
+      this.supabaseInstance = createClient()
+    }
+    return this.supabaseInstance
+  }
+
   // Subscribe to delivery status updates
   subscribeToDelivery(deliveryId: string, callback: (update: DeliveryStatusUpdate) => void) {
+    const supabase = this.getSupabase()
     const channelName = `delivery:${deliveryId}`
 
     if (this.channels.has(channelName)) {
       this.unsubscribeFromDelivery(deliveryId)
     }
 
-    const channel = this.supabase
+    const channel = supabase
       .channel(channelName)
       .on(
         "postgres_changes",
@@ -55,13 +63,14 @@ class RealtimeTrackingService {
 
   // Subscribe to driver location updates
   subscribeToDriverLocation(driverId: string, callback: (location: DeliveryLocationUpdate) => void) {
+    const supabase = this.getSupabase()
     const channelName = `driver_location:${driverId}`
 
     if (this.channels.has(channelName)) {
       this.unsubscribeFromDriverLocation(driverId)
     }
 
-    const channel = this.supabase
+    const channel = supabase
       .channel(channelName)
       .on(
         "postgres_changes",
@@ -87,8 +96,9 @@ class RealtimeTrackingService {
     driverId: string,
     location: { lat: number; lng: number; heading?: number; speed?: number },
   ) {
+    const supabase = this.getSupabase()
     try {
-      const { error } = await this.supabase.from("driver_locations").upsert({
+      const { error } = await supabase.from("driver_locations").upsert({
         driver_id: driverId,
         latitude: location.lat,
         longitude: location.lng,
@@ -105,8 +115,9 @@ class RealtimeTrackingService {
 
   // Get current driver location
   async getDriverLocation(driverId: string): Promise<DeliveryLocationUpdate | null> {
+    const supabase = this.getSupabase()
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from("driver_locations")
         .select("*")
         .eq("driver_id", driverId)
@@ -124,30 +135,33 @@ class RealtimeTrackingService {
 
   // Unsubscribe from delivery updates
   unsubscribeFromDelivery(deliveryId: string) {
+    const supabase = this.getSupabase()
     const channelName = `delivery:${deliveryId}`
     const channel = this.channels.get(channelName)
 
     if (channel) {
-      this.supabase.removeChannel(channel)
+      supabase.removeChannel(channel)
       this.channels.delete(channelName)
     }
   }
 
   // Unsubscribe from driver location updates
   unsubscribeFromDriverLocation(driverId: string) {
+    const supabase = this.getSupabase()
     const channelName = `driver_location:${driverId}`
     const channel = this.channels.get(channelName)
 
     if (channel) {
-      this.supabase.removeChannel(channel)
+      supabase.removeChannel(channel)
       this.channels.delete(channelName)
     }
   }
 
   // Clean up all subscriptions
   unsubscribeAll() {
+    const supabase = this.getSupabase()
     this.channels.forEach((channel) => {
-      this.supabase.removeChannel(channel)
+      supabase.removeChannel(channel)
     })
     this.channels.clear()
   }
