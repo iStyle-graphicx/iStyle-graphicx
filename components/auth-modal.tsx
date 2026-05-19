@@ -64,7 +64,9 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
     try {
       const supabase = createClient()
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo:
+          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+          `${window.location.origin}/auth/callback?next=/auth/reset-password`,
       })
 
       if (error) throw error
@@ -152,7 +154,9 @@ export function AuthModal({ type, isOpen, onClose, onSuccess, onSwitchToRegister
           email: formData.email,
           password: formData.password,
           options: {
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo:
+              process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+              `${window.location.origin}/auth/callback`,
             data: {
               first_name: formData.firstName,
               last_name: formData.lastName,
