@@ -83,7 +83,6 @@
 \`\`\`bash
 # The app is configured to deploy automatically via Vercel
 # Ensure all environment variables are set in Vercel dashboard
-\`\`\`
 
 ### 2. Database Migration
 \`\`\`sql
